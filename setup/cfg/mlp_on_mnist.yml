@@ -1,0 +1,67 @@
+name: ""
+seed: 0
+n_gpus: 0
+
+run: 
+  dataset: 
+    name: "mnist"
+    split: [0.6, 0.2, 0.2]
+    train: 
+      subsample: 1.0
+      batch_size: 32
+      num_workers: 1
+      pin_memory: True
+      shuffle: True
+    val: 
+      subsample: 1.0
+      batch_size: 32
+      num_workers: 1
+      pin_memory: True
+    test: 
+      subsample: 1.0
+      batch_size: 32
+      num_workers: 1
+      pin_memory: True
+
+  epoch: 0
+  total_epochs: 10
+
+  model:
+    name: "mlp"
+    checkpoint: ""
+    dimensions: [784, 512, 256, 128, 64, 10] 
+    normalizations: [True, False, True, False, True] # ambiguous whether batch or layer, but clear depending on CV or NLP
+    activations: ["relu", "leaky_relu", "relu", "relu", "relu"]
+
+  loss: 
+    name: "ce"
+    l1: 0.0
+
+  optimizer: 
+    name: "sgd"
+    checkpoint: "" 
+    lr: 1e-3
+    momentum: 0.0
+    betas: [0.9, 0.999]
+    weight_decay: 0.0
+
+log:
+  savedir: ""
+  track: 
+    every: 1 
+  checkpoint: 
+    every: 1
+    model: True 
+    optimizer: True
+  diagnose: 
+    every: 1
+    save_local: True
+
+    weights: True 
+    gradients: True 
+    predict_batch: True
+  wandb: 
+    enabled: False 
+    entity: "bahngmc-duke-university" 
+    project: ""
+
