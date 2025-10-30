@@ -1,0 +1,16 @@
+torch 
+torchvision 
+scikit-learn 
+numpy 
+matplotlib 
+pyyaml 
+tqdm 
+ipython 
+debugpy 
+wandb 
+scipy 
+gdown 
+kagglehub
+opencv-python
+h5py
+pandas
