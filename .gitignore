@@ -1,0 +1,10 @@
+__pycache__/
+**/.DS_Store
+saved/*
+!saved/fig
+data/*
+profile
+
+/.python-version
+/pyproject.toml
+/uv.lock

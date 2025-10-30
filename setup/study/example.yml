@@ -1,0 +1,4 @@
+name: search_lr
+trial_config: setup/cfg/mlp_mnist.yml
+search_space:
+  run.optimizer.lr: [0.001, 0.01, 0.1]
