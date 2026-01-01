@@ -7,7 +7,9 @@ def init_loss(cfg_loss: dict):
     case 'mse' | 'l2':
       return MSE()
     case 'cross_entropy' | 'ce':
-      return CrossEntropy()
+      return CrossEntropy() 
+    case 'adversarial': 
+      return MSE()
     case _:
       raise Exception("Loss not implemented.")
 

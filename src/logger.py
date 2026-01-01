@@ -134,23 +134,41 @@ class Logger:
       if self.diagnose.get("weights") and self.wandb_logger:
         weights_log = {}
         for name, param in model.named_parameters():
-          weights_log[f"weights/{name}"] = wandb.Histogram(param.detach().cpu().numpy()) # type: ignore
+          hist = self._create_histogram(param.detach().cpu().numpy())
+          if hist is not None:
+            weights_log[f"weights/{name}"] = hist
+        
         self.wandb_logger.log(weights_log, step=trainer.epoch)
 
       if self.diagnose.get("gradients") and self.wandb_logger: 
         grads_log = {}
         for name, param in model.named_parameters():
           if param.grad is not None:
-            grads_log[f"gradients/{name}"] = wandb.Histogram(param.grad.detach().cpu().numpy()) # type: ignore
+            hist = self._create_histogram(param.grad.detach().cpu().numpy())
+            if hist is not None:
+              grads_log[f"gradients/{name}"] = hist
+        
         self.wandb_logger.log(grads_log, step=trainer.epoch)
 
       if self.diagnose.get("sample"): 
-        if hasattr(trainer, "predict_batch"):
-          fig = trainer.predict_batch() # type: ignore
-          if self.wandb_logger:
-            self.wandb_logger.log({f"sample_digits": wandb.Image(fig)}, step=trainer.epoch) 
-          
-          if save_local:
-            fig.savefig(os.path.join(epoch_save_dir, "sample_digits.png"))
-          
-          plt.close(fig)
+        fig = trainer.sample() # type: ignore
+        self.wandb_logger.log({f"sample_digits": wandb.Image(fig)}, step=trainer.epoch) 
+
+      if self.diagnose.get("distribution"): 
+        fig = trainer.visualize_distribution() # type: ignore
+        self.wandb_logger.log({f"distribution": wandb.Image(fig)}, step=trainer.epoch) 
+
+  def _create_histogram(self, data):
+    try:
+      return wandb.Histogram(data)
+    except ValueError:
+      # Fallback for "Too many bins" error usually due to constant or low-variance data
+      try:
+        return wandb.Histogram(data, num_bins=1)
+      except:
+        return None
+    except Exception:
+      return None 
+
+
+      

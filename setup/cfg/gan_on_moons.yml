@@ -1,0 +1,77 @@
+name: ""                          # run name 
+n_gpus: 0                         # 0 = cpu, 1 = cuda:0, >1 = multi-gpu setup
+seed: 1
+
+run: 
+  dataset: 
+    name: "moons"                        # name of the dataset [mnist, cifar10, svhn, celeba]
+    split: [0.6, 0.2, 0.2]          # train/val/test split. If the split is provided, then it ignores this. If there is already a train/test split, then we divide the train set into train/val split according to the ratio of the first two elements of the tuple. 
+    train: 
+      subsample: 1.0                # To speed up train runs for initial debugging. Either an int > 1 representing number of samples to truncate from, or float in [0, 1] representing portion of dataset to train on
+      batch_size: 32
+      num_workers: 1
+      shuffle: True
+      pin_memory: True
+      # augmentation: []              # potential augmentation 
+    val: 
+      subsample: 1.0
+      batch_size: 32
+      num_workers: 1
+      shuffle: False 
+      pin_memory: True
+    test: 
+      subsample: 1.0
+      batch_size: 32
+      num_workers: 1
+      shuffle: False 
+      pin_memory: True
+
+  epoch: 0
+  total_epochs: 10
+  n_critic: 2
+
+  model:                              # each model has different hyperparameters, so case-by-case  
+    name: "gan"
+    checkpoint: ""
+    generator: 
+      dimensions: [64, 32, 16, 2]
+      normalizations: [False, False, False] 
+      activations: ["relu", "relu", ""]
+    discriminator: 
+      dimensions: [2, 32, 16, 1]
+      normalizations: [False, False, False] 
+      activations: ["relu", "relu", "sigmoid"]
+
+  loss: 
+    name: "adversarial"
+    # direct hyperparameter weights 
+    l1: 0.0                         # l1 loss, added directly to weights of model
+
+  optimizer: 
+    name: "adam"                        # sgd, adam 
+    checkpoint: ""                  # checkpoint path to optimizer
+    lr: 2e-4                        # learning rate
+    momentum: 0.0                   # momentum, only relevant for SGD
+    betas: [0.5, 0.999]             # betas, relevant only for Adam
+    weight_decay: 0.0
+
+log:
+  savedir: ""                       # dummy, will be overrided by saved/name 
+  track: 
+    every: 1 
+  checkpoint: 
+    every: 1
+    model: True 
+    optimizer: True
+  diagnose: 
+    every: 1
+    weights: True 
+    gradients: True 
+    sample: False
+    distribution: True
+  wandb: 
+    enabled: True
+    entity: "bahngmc-duke-university" 
+    project: "689"
+
+
