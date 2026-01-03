@@ -14,10 +14,12 @@ class Trainer:
   def __new__(cls, **kwargs):
     # Import inside method to avoid circular import
     from .supervised import SupervisedTrainer 
+    from .gpt2 import GPT2Trainer 
     
     model_name = kwargs["model"]["name"]
 
     if model_name == "mlp": return super().__new__(SupervisedTrainer) # type: ignore
+    elif model_name == "gpt2": return super().__new__(GPT2Trainer) # type: ignore
     else: raise NotImplementedError
 
   def __init__(self, device, dataset, epoch, total_epochs, model, loss, optimizer, **kwargs):

@@ -1,5 +1,6 @@
 import torch
 from .mlp import * 
+from .gpt2 import *
 from torch.nn import Module
 from copy import deepcopy
 
@@ -14,6 +15,9 @@ def init_model(cfg_model: dict) -> Module:
     case "mlp": 
       print("Loading Model: MLP")
       model = MLP(**args)
+    case "gpt2": 
+      print("Loading Model: GPT2")
+      model = GPT2(**args)
     case _: 
       raise Exception("Model not defined")
 
