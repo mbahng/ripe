@@ -1,6 +1,7 @@
 import torch
 from .mlp import * 
 from .nice import NICE
+from .realnvp import RealNVP, RealNVP1d
 from torch.nn import Module
 from copy import deepcopy
 
@@ -18,6 +19,12 @@ def init_model(cfg_model: dict) -> Module:
     case "nice": 
       print("Loading Model: NICE")
       model = NICE(**args)
+    case "realnvp1d": 
+      print("Loading Model: RealNVP1d")
+      model = RealNVP1d(**args)
+    case "realnvp": 
+      print("Loading Model: RealNVP")
+      model = RealNVP(**args)
     case _: 
       raise Exception("Model not defined")
 

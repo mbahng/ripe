@@ -16,11 +16,14 @@ class Trainer:
     # Import inside method to avoid circular import
     from .supervised import SupervisedTrainer 
     from .nice import NICETrainer
+    from .realnvp import RealNVPTrainer
     
     model_name = kwargs["model"]["name"]
 
     if model_name == "mlp": return super().__new__(SupervisedTrainer) # type: ignore
     elif model_name == "nice": return super().__new__(NICETrainer) # type: ignore
+    elif model_name == "realnvp1d": return super().__new__(NICETrainer) # type: ignore
+    elif model_name == "realnvp": return super().__new__(RealNVPTrainer) # type: ignore
     else: raise NotImplementedError
 
   def __init__(self, device, dataset, epoch, total_epochs, model, loss, optimizer, **kwargs):
