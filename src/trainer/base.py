@@ -17,6 +17,7 @@ class Trainer:
     from .supervised import SupervisedTrainer 
     from .nice import NICETrainer
     from .realnvp import RealNVPTrainer
+    from .glow import GlowTrainer
     
     model_name = kwargs["model"]["name"]
 
@@ -24,6 +25,7 @@ class Trainer:
     elif model_name == "nice": return super().__new__(NICETrainer) # type: ignore
     elif model_name == "realnvp1d": return super().__new__(NICETrainer) # type: ignore
     elif model_name == "realnvp": return super().__new__(RealNVPTrainer) # type: ignore
+    elif model_name == "glow": return super().__new__(GlowTrainer) # type: ignore
     else: raise NotImplementedError
 
   def __init__(self, device, dataset, epoch, total_epochs, model, loss, optimizer, **kwargs):

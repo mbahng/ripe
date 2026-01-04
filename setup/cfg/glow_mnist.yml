@@ -1,0 +1,91 @@
+name: ""                          # run name. If empty, then uses current timestamp
+n_gpus: 1                         # 0 = cpu, 1 = cuda:0, >1 = multi-gpu setup
+seed: 0
+
+
+run: 
+  dataset: 
+    name: "mnist"                        # name of the dataset
+    split: [0.6, 0.2, 0.2]          # train/val/test split
+    train: 
+      subsample: 1.0                
+      batch_size: 32
+      num_workers: 1
+      pin_memory: True
+      shuffle: True
+    val: 
+      subsample: 1.0
+      batch_size: 32
+      num_workers: 1
+      pin_memory: True
+    test: 
+      subsample: 1.0
+      batch_size: 32
+      num_workers: 1
+      pin_memory: True
+
+  epoch: 0
+  total_epochs: 10
+  dequantize: True
+
+  model:
+    name: "glow"
+    checkpoint: "" 
+    input_shape: [1, 28, 28]
+    n_scales: 2
+    flow_depth: 3
+
+    logit_transform: 
+      alpha: 0.05   # small constant to avoid log(0)
+
+    squeeze: 
+    
+    actnorm: 
+
+    invertible1x1conv: 
+
+    affine_coupling_layer2d: 
+      resnet: 
+        latent_channel: 8
+        n_blocks: 3
+        block: 
+          normalizations: [True, True]
+          activations: ["relu", "relu"]
+          channels: [8, 8, 8] 
+          kernel_sizes: [3, 3] 
+          strides: [1, 1] 
+          paddings: [1, 1] 
+          weight_norm: [True, True]
+        use_skip: True
+
+
+    factorout: 
+
+  loss: 
+    name: "ce"
+    l1: 0.0
+
+  optimizer: 
+    name: "adam"
+    checkpoint: ""                  
+    lr: 1e-4
+    weight_decay: 1e-5
+
+log:
+  savedir: ""                       
+  track: 
+    every: 1 
+  checkpoint: 
+    every: 5 
+    model: True 
+    optimizer: True
+  diagnose: 
+    every: 1
+    weights: True 
+    gradients: True 
+    sample: True
+    distribution: False
+  wandb: 
+    enabled: True 
+    entity: "bahngmc-duke-university" 
+    project: ""

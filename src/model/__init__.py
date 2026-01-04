@@ -2,6 +2,7 @@ import torch
 from .mlp import * 
 from .nice import NICE
 from .realnvp import RealNVP, RealNVP1d
+from .glow import Glow
 from torch.nn import Module
 from copy import deepcopy
 
@@ -25,6 +26,9 @@ def init_model(cfg_model: dict) -> Module:
     case "realnvp": 
       print("Loading Model: RealNVP")
       model = RealNVP(**args)
+    case "glow": 
+      print("Loading Model: GLOW")
+      model = Glow(**args)
     case _: 
       raise Exception("Model not defined")
 
@@ -32,4 +36,5 @@ def init_model(cfg_model: dict) -> Module:
     model.load_state_dict(torch.load(ckpt_path, weights_only=True))
 
   return model
+
 
