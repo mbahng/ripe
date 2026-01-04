@@ -1,5 +1,7 @@
 import torch
 from .mlp import * 
+from .vae import *
+from .cvae import *
 from torch.nn import Module
 from copy import deepcopy
 
@@ -14,6 +16,12 @@ def init_model(cfg_model: dict) -> Module:
     case "mlp": 
       print("Loading Model: MLP")
       model = MLP(**args)
+    case "vae": 
+      print("Loading Model: VAE") 
+      model = VAE(**args)
+    case "cvae": 
+      print("Loading Model: CVAE") 
+      model = CVAE(**args)
     case _: 
       raise Exception("Model not defined")
 
@@ -21,4 +29,3 @@ def init_model(cfg_model: dict) -> Module:
     model.load_state_dict(torch.load(ckpt_path, weights_only=True))
 
   return model
-

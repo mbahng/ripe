@@ -144,13 +144,24 @@ class Logger:
             grads_log[f"gradients/{name}"] = wandb.Histogram(param.grad.detach().cpu().numpy()) # type: ignore
         self.wandb_logger.log(grads_log, step=trainer.epoch)
 
-      if self.diagnose.get("sample"): 
-        if hasattr(trainer, "predict_batch"):
-          fig = trainer.predict_batch() # type: ignore
-          if self.wandb_logger:
-            self.wandb_logger.log({f"sample_digits": wandb.Image(fig)}, step=trainer.epoch) 
-          
-          if save_local:
-            fig.savefig(os.path.join(epoch_save_dir, "sample_digits.png"))
-          
-          plt.close(fig)
+      if self.diagnose.get("sample_digits"): 
+        fig = trainer.sample_digits() # type: ignore
+        self.wandb_logger.log({f"sample_digits": wandb.Image(fig)}, step=trainer.epoch)
+        plt.close(fig)
+
+      if self.diagnose.get("reconstruct"): 
+        fig = trainer.reconstruct() # type: ignore
+        self.wandb_logger.log({f"reconstructed": wandb.Image(fig)}, step=trainer.epoch) 
+        plt.close(fig)
+
+      if self.diagnose.get("interpolate"): 
+        fig = trainer.interpolate() # type: ignore
+        self.wandb_logger.log({f"interpolated": wandb.Image(fig)}, step=trainer.epoch) 
+        plt.close(fig)
+
+      if self.diagnose.get("visualize_latent_space"): 
+        fig = trainer.visualize_latent_space() # type: ignore
+        self.wandb_logger.log({f"latent_space": wandb.Image(fig)}, step=trainer.epoch) 
+        plt.close(fig)
+
+
