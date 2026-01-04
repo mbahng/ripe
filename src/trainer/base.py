@@ -2,6 +2,7 @@ import torch
 from typing import Dict
 import src
 from copy import deepcopy
+from ..model import *
 
 class Trainer: 
   """
@@ -14,10 +15,12 @@ class Trainer:
   def __new__(cls, **kwargs):
     # Import inside method to avoid circular import
     from .supervised import SupervisedTrainer 
+    from .nice import NICETrainer
     
     model_name = kwargs["model"]["name"]
 
     if model_name == "mlp": return super().__new__(SupervisedTrainer) # type: ignore
+    elif model_name == "nice": return super().__new__(NICETrainer) # type: ignore
     else: raise NotImplementedError
 
   def __init__(self, device, dataset, epoch, total_epochs, model, loss, optimizer, **kwargs):

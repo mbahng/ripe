@@ -145,12 +145,10 @@ class Logger:
         self.wandb_logger.log(grads_log, step=trainer.epoch)
 
       if self.diagnose.get("sample"): 
-        if hasattr(trainer, "predict_batch"):
-          fig = trainer.predict_batch() # type: ignore
-          if self.wandb_logger:
-            self.wandb_logger.log({f"sample_digits": wandb.Image(fig)}, step=trainer.epoch) 
-          
-          if save_local:
-            fig.savefig(os.path.join(epoch_save_dir, "sample_digits.png"))
-          
-          plt.close(fig)
+        fig = trainer.sample() # type: ignore
+        self.wandb_logger.log({f"sample_digits": wandb.Image(fig)}, step=trainer.epoch) 
+
+      if self.diagnose.get("distribution"): 
+        fig = trainer.distribution() # type: ignore
+        self.wandb_logger.log({f"distribution": wandb.Image(fig)}, step=trainer.epoch) 
+
