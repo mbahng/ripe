@@ -64,6 +64,7 @@ def init_dataset(cfg_dataset: dict) -> Dict[str, Dataset]:
       raise Exception("Not a valid dataset.")
 
   train_ds = datasets["train"]
+  push_ds = datasets["train"]
   val_ds = datasets["val"]
   test_ds = datasets["test"]
 
