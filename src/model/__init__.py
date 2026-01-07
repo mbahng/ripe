@@ -1,6 +1,7 @@
 import torch
 from .mlp import * 
 from .protopnet import *
+from .prototree import *
 from torch.nn import Module
 from copy import deepcopy
 
@@ -18,6 +19,9 @@ def init_model(cfg_model: dict) -> Module:
     case "protopnet": 
       print("Loading Model: ProtoPNet")
       model = ProtoPNet(**args)
+    case "prototree": 
+      print("Loading Model: ProtoTree")
+      model = ProtoTree(**args)
     case _: 
       raise Exception("Model not defined")
 

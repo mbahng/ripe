@@ -15,11 +15,13 @@ class Trainer:
     # Import inside method to avoid circular import
     from .supervised import SupervisedTrainer 
     from .protopnet import ProtoPNetTrainer 
+    from .prototree import ProtoTreeTrainer 
     
     model_name = kwargs["model"]["name"]
 
     if model_name == "mlp": return super().__new__(SupervisedTrainer) # type: ignore
     elif model_name == "protopnet": return super().__new__(ProtoPNetTrainer) # type: ignore
+    elif model_name == "prototree": return super().__new__(ProtoTreeTrainer) # type: ignore
     else: raise NotImplementedError
 
   def __init__(self, device, dataset, epoch, model, loss, optimizer, **kwargs):
