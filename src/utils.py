@@ -1,4 +1,18 @@
 import torch
+from copy import deepcopy
+
+class EMA(torch.nn.Module):
+    def __init__(self, model, beta=0.995):
+        super().__init__()
+        self.beta = beta
+        self.ema_model = deepcopy(model)
+        self.ema_model.eval()
+        for param in self.ema_model.parameters():
+            param.requires_grad_(False)
+
+    def update(self, model):
+        for current_param, ema_param in zip(model.parameters(), self.ema_model.parameters()):
+            ema_param.data = self.beta * ema_param.data + (1.0 - self.beta) * current_param.data
 
 def activation(name): 
   match name.lower():

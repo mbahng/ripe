@@ -12,6 +12,8 @@ def main(cfg: Config):
   device = 0 if cfg["n_gpus"] == 1 else None
   trainer = Trainer(**cfg["run"], device=device)
 
+  print(f"Number of parameters: {sum(p.numel() for p in trainer.model.parameters() if p.requires_grad)}")
+
   # then run initial epoch to validate that everything runs.
   trainer.train(initial=True)
   trainer.val() 

@@ -4,10 +4,31 @@ from PIL import Image
 from torchvision import transforms, datasets 
 from torch.utils.data import random_split, Dataset
 
+def fashion_mnist(dataset_cfg: dict):
+  # transform and augment
+  transform = transforms.Compose([
+    transforms.Pad(2), # 28x28 -> 32x32
+    transforms.ToTensor(),
+    transforms.Lambda(lambda t : 2 * t - 1) # Scale to [-1, 1]
+  ])
+
+  # split
+  train_split, val_split, _ = dataset_cfg["split"] 
+  total_split = train_split + val_split
+  train_split = train_split / total_split
+  val_split = val_split / total_split
+  ds = datasets.FashionMNIST(root='./data', train=True, transform=transform, download=True) 
+  train_ds, val_ds = random_split(ds, [train_split, val_split])
+  test_ds = datasets.FashionMNIST(root='./data', train=False, transform=transform, download=True) 
+
+  return train_ds, val_ds, test_ds
+
 def mnist(dataset_cfg: dict): 
   # transform and augment
   transform = transforms.Compose([
-    transforms.ToTensor()
+    transforms.Pad(2), # 28x28 -> 32x32
+    transforms.ToTensor(),
+    transforms.Lambda(lambda t : 2 * t - 1)
   ])
 
   # split
@@ -41,7 +62,9 @@ def fashion_mnist(dataset_cfg: dict):
 def cifar10(dataset_cfg: dict): 
   # transform and augment
   transform = transforms.Compose([
-    transforms.ToTensor()
+    transforms.RandomHorizontalFlip(),
+    transforms.ToTensor(),
+    transforms.Lambda(lambda t : 2 * t - 1)  # scale between [-1, 1]
   ])
 
   # split
@@ -128,8 +151,9 @@ def cars(dataset_cfg: dict):
 
   # transform and augment
   transform = transforms.Compose([
-    transforms.Resize((256, 256)),
+    transforms.Resize((64, 64)),
     transforms.ToTensor(), # scales data to [0, 1]
+    transforms.Lambda(lambda t : 2 * t - 1)  # scale between [-1, 1]
   ])
 
   full_train_ds = StanfordCarsDataset(root='data/cars', split='train', transform=transform)
@@ -152,6 +176,7 @@ def svhn(dataset_cfg: dict):
   # transform and augment
   transform = transforms.Compose([
     transforms.ToTensor(),
+    transforms.Lambda(lambda t : 2 * t - 1)
   ])
 
   # split
@@ -166,7 +191,10 @@ def svhn(dataset_cfg: dict):
 
 def celebA(dataset_cfg: dict): 
   transform = transforms.Compose([
+    transforms.CenterCrop(178),
+    transforms.Resize((128, 128)),
     transforms.ToTensor(),
+    transforms.Lambda(lambda t: 2 * t - 1)
   ])
 
   train_ds = datasets.CelebA(root='./data', split='train', transform=transform, download=True)
@@ -180,7 +208,9 @@ def flowers102(dataset_cfg: dict):
   Needs scipy to load target files
   """
   transform = transforms.Compose([
+    transforms.Resize((128, 128)),
     transforms.ToTensor(),
+    transforms.Lambda(lambda t : 2 * t - 1)
   ])
 
 

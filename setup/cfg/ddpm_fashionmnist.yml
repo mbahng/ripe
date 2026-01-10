@@ -1,0 +1,78 @@
+name: ""
+seed: 0
+n_gpus: 1
+
+run: 
+  dataset: 
+    name: "fashion_mnist"
+    split: [0.8, 0.1, 0.1]
+    train: 
+      subsample: 1.0
+      batch_size: 128
+      num_workers: 2
+      pin_memory: True
+      shuffle: True
+    val: 
+      subsample: 1.0
+      batch_size: 128
+      num_workers: 2
+      pin_memory: True
+    test: 
+      subsample: 1.0
+      batch_size: 128
+      num_workers: 2
+      pin_memory: True
+
+  epoch: 0
+  total_epochs: 50
+
+  model:
+    name: "ddpm"
+    checkpoint: ""
+    timesteps: 1000
+    beta_scheduler: 
+      name: "cosine" 
+      start: 0.0001 
+      end: 0.02
+
+    noise_predictor: 
+      name: "unet" 
+      image_channels: 1
+      down_channels: [32, 64, 128, 256]
+      up_channels: [256, 128, 64, 32] 
+      out_dim: 1
+      time_emb_dim: 32
+      dropout: 0.1
+
+
+  loss: 
+    name: "mse" 
+    l1: 0.0
+
+  optimizer: 
+    name: "adam"
+    checkpoint: ""
+    lr: 2e-4
+    momentum: 0.0
+    betas: [0.9, 0.99]
+    weight_decay: 0.0
+
+log:
+  savedir: ""
+  track: 
+    every: 1 
+  checkpoint: 
+    every: 10000
+    model: True 
+    optimizer: True
+  diagnose: 
+    every: 1
+    weights: False
+    gradients: False 
+    sample_across_time: True
+  wandb: 
+    enabled: True 
+    entity: "bahngmc-duke-university" 
+    project: ""
+
+

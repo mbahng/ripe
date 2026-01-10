@@ -1,5 +1,6 @@
 import torch
 from .mlp import * 
+from .ddpm import *
 from torch.nn import Module
 from copy import deepcopy
 
@@ -14,6 +15,9 @@ def init_model(cfg_model: dict) -> Module:
     case "mlp": 
       print("Loading Model: MLP")
       model = MLP(**args)
+    case "ddpm": 
+      print("Loading Model: ddpm")
+      model = DDPM(**args)
     case _: 
       raise Exception("Model not defined")
 

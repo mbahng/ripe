@@ -1,0 +1,78 @@
+name: "ddpm_celeba"
+seed: 0
+n_gpus: 1
+
+run: 
+  dataset: 
+    name: "celeba"
+    split: [0.8, 0.1, 0.1] # Not used for CelebA but kept for structure
+    train: 
+      subsample: 1.0
+      batch_size: 24
+      num_workers: 2
+      pin_memory: True
+      shuffle: True
+    val: 
+      subsample: 1.0
+      batch_size: 24
+      num_workers: 2
+      pin_memory: True
+    test: 
+      subsample: 1.0
+      batch_size: 24
+      num_workers: 2
+      pin_memory: True
+
+  epoch: 0
+  total_epochs: 1000
+
+  model:
+    name: "ddpm"
+    checkpoint: ""
+    timesteps: 1000
+    beta_scheduler: 
+      name: "linear" 
+      start: 0.0001 
+      end: 0.1
+
+    noise_predictor: 
+      name: "unet" 
+      image_channels: 3 
+      down_channels: [32, 64, 128, 256, 512]
+      up_channels: [512, 256, 128, 64, 32] 
+      out_dim: 3 
+      time_emb_dim: 32
+      dropout: 0.1
+
+
+  loss: 
+    name: "mse" # using mse as in code
+    l1: 0.0
+
+  optimizer: 
+    name: "adam"
+    checkpoint: ""
+    lr: 1e-4
+    momentum: 0.0
+    betas: [0.9, 0.99]
+    weight_decay: 0.0
+
+log:
+  savedir: ""
+  track: 
+    every: 1 
+  checkpoint: 
+    every: 10000
+    model: True 
+    optimizer: True
+  diagnose: 
+    every: 1
+    weights: False
+    gradients: False 
+    sample_across_time: True
+  wandb: 
+    enabled: True 
+    entity: "bahngmc-duke-university" 
+    project: ""
+
+

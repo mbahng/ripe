@@ -1,9 +1,11 @@
-# \[Name\]
+# Diffusion Models
 
-   \[Abstract\]
+   Various diffusion models. 
 
-   Some teaser figures here. 
-   ![image](saved/fig/diagram.png)
+   ![image](saved/fig/mnist_5.png)
+   ![image](saved/fig/fashionmnist_4.png)
+   ![image](saved/fig/flowers_1000.png)
+   ![image](saved/fig/celeba_26.png)
 
 
    Setup conda env. 

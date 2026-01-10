@@ -144,13 +144,8 @@ class Logger:
             grads_log[f"gradients/{name}"] = wandb.Histogram(param.grad.detach().cpu().numpy()) # type: ignore
         self.wandb_logger.log(grads_log, step=trainer.epoch)
 
-      if self.diagnose.get("sample"): 
-        if hasattr(trainer, "predict_batch"):
-          fig = trainer.predict_batch() # type: ignore
-          if self.wandb_logger:
-            self.wandb_logger.log({f"sample_digits": wandb.Image(fig)}, step=trainer.epoch) 
-          
-          if save_local:
-            fig.savefig(os.path.join(epoch_save_dir, "sample_digits.png"))
-          
-          plt.close(fig)
+      if self.diagnose.get("sample_across_time"): 
+        fig = trainer.sample_across_time() # type: ignore
+        self.wandb_logger.log({f"diffusion_process": wandb.Image(fig)}, step=trainer.epoch) 
+        import matplotlib.pyplot as plt
+        plt.close(fig)
