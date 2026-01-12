@@ -4,6 +4,7 @@ saved/*
 !saved/fig
 data/*
 profile
+src/model/pretrained_models/
 
 /.python-version
 /pyproject.toml

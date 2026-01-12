@@ -21,7 +21,7 @@ class Logger:
   Should add custom functions for saving other data specific to your project. 
   """
 
-  def __init__(self, cfg, device=None):
+  def __init__(self, cfg, device):
     cfg_log = cfg["log"]
     self.savedir = cfg_log["savedir"]
 
@@ -125,7 +125,9 @@ class Logger:
       if self.checkpoint.get("model"): 
         torch.save(model.state_dict(), os.path.join(epoch_save_dir, "model.pt")) 
       if self.checkpoint.get("optimizer"): 
-        torch.save(trainer.optimizer.state_dict(), os.path.join(epoch_save_dir, "model.pt")) 
+        torch.save(trainer.warm_optimizer.state_dict(), os.path.join(epoch_save_dir, "warm_optimizer.pt")) 
+        torch.save(trainer.joint_optimizer.state_dict(), os.path.join(epoch_save_dir, "joint_optimizer.pt")) 
+        torch.save(trainer.last_optimizer.state_dict(), os.path.join(epoch_save_dir, "last_layer_optimizer.pt")) 
 
     # diagnosing (weights, gradients, visualizations), i.e. save on wandb 
     if trainer.epoch % self.diagnose["every"] == 0: 
