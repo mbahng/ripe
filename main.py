@@ -23,9 +23,16 @@ def main(cfg: Config):
 
   trainer.run(logger)
 
+  # push last time 
+  trainer.push(visualize=True) 
+
+  for _ in range(5): 
+    trainer.train(stage="last") 
+    trainer.val()
+    pprint(trainer.metrics)
+    logger.save(trainer)  
+
   # final epoch with test dataset evaluation
-  trainer.train()
-  trainer.val()
   trainer.test()
   pprint(trainer.metrics)
   logger.save(trainer)
@@ -33,7 +40,7 @@ def main(cfg: Config):
 
 if __name__ == "__main__": 
   parser = argparse.ArgumentParser()
-  parser.add_argument('--cfg', type=str, help='Path to config file.')
+  parser.add_argument('--cfg', type=str, default="setup/cfg/protopnet.yml", help='Path to config file.')
   parser.add_argument('--resume', action='store_true', help='Continue from prev run.')
   args = parser.parse_args()
 

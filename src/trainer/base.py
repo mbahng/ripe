@@ -14,25 +14,26 @@ class Trainer:
   def __new__(cls, **kwargs):
     # Import inside method to avoid circular import
     from .supervised import SupervisedTrainer 
+    from .protopnet import ProtoPNetTrainer 
     
     model_name = kwargs["model"]["name"]
 
     if model_name == "mlp": return super().__new__(SupervisedTrainer) # type: ignore
+    elif model_name == "protopnet": return super().__new__(ProtoPNetTrainer) # type: ignore
     else: raise NotImplementedError
 
-  def __init__(self, device, dataset, epoch, total_epochs, model, loss, optimizer, **kwargs):
+  def __init__(self, device, dataset, epoch, model, loss, optimizer, **kwargs):
     self.device = device
 
-    self.train_dl, self.val_dl, self.test_dl = src.dataset.init_dataloader(dataset)
+    self.train_dl, self.push_dl, self.val_dl, self.test_dl = src.dataset.init_dataloader(dataset)
 
     self.model = src.model.init_model(model).to(self.device)
     self.model.device = self.device
 
     self.loss = src.loss.init_loss(loss)
-    self.optimizer = src.optimizer.init_optimizer(optimizer, self.model)
+    self.warm_optimizer, self.joint_optimizer, self.last_optimizer = src.optimizer.init_optimizer(optimizer, self.model)
 
     self.epoch = epoch 
-    self.total_epochs = total_epochs
 
     # the metrics to keep track of
     self._metrics = {} 
