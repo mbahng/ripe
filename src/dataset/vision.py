@@ -338,25 +338,89 @@ def crop_and_split_images(dataset_root, output_root, val_split=0.2):
 def cub200(dataset_cfg: dict): 
   import kagglehub
   import shutil
+  import Augmentor
 
   # download dataset 
   if not os.path.exists("data/CUB_200_2011"): 
     data_path = kagglehub.dataset_download("wenewone/cub2002011")
-    shutil.move(f"{data_path}/CUB_200_2011", "./data")
+    src_path = os.path.join(data_path, "CUB_200_2011")
+    target_path = "./data/CUB_200_2011"
+    
+    # Ensure clean target
+    if os.path.exists(target_path):
+        shutil.rmtree(target_path)
+        
+    if os.path.exists(src_path):
+        print(f"Copying dataset from {src_path} to {target_path}...")
+        shutil.copytree(src_path, target_path)
+    elif os.path.exists(os.path.join(data_path, "images")):
+         print(f"Adapting flat dataset structure from {data_path}...")
+         shutil.copytree(data_path, target_path)
+    else:
+         raise FileNotFoundError(f"Expected 'CUB_200_2011' folder or 'images' in {data_path}, found: {os.listdir(data_path)}")
 
   # crop and make train/validation/test split
   if not os.path.exists("data/cub200_cropped"):
     crop_and_split_images(dataset_root="./data/CUB_200_2011", output_root="./data/cub200_cropped")
 
+  # augment train set
+  if not os.path.exists("data/cub200_cropped/train_cropped_augmented"): 
+    dir = os.path.abspath('./data/cub200_cropped/train_cropped/')
+    target_dir = os.path.abspath('./data/cub200_cropped/train_cropped_augmented/')
+
+    makedir(target_dir)
+
+    folders = [os.path.join(dir, folder) for folder in next(os.walk(dir))[1]]
+    target_folders = [os.path.join(target_dir, folder) for folder in next(os.walk(dir))[1]]
+
+    for i in range(0, len(folders)):
+      fd = folders[i]
+      tfd = target_folders[i]
+      # rotation
+      p = Augmentor.Pipeline(source_directory=fd, output_directory=tfd) 
+      p.rotate(probability=1, max_left_rotation=10, max_right_rotation=10)
+      p.flip_left_right(probability=0.5)
+      for i in range(10):
+        p.process()
+      del p
+      # skew
+      p = Augmentor.Pipeline(source_directory=fd, output_directory=tfd)
+      p.skew(probability=1, magnitude=0.2)  # max 45 degrees
+      p.flip_left_right(probability=0.5)
+      for i in range(10):
+        p.process()
+      del p
+      # shear
+      p = Augmentor.Pipeline(source_directory=fd, output_directory=tfd)
+      p.shear(probability=1, max_shear_left=10, max_shear_right=10)
+      p.flip_left_right(probability=0.5)
+      for i in range(10):
+        p.process()
+      del p
+      # random_distortion
+      #p = Augmentor.Pipeline(source_directory=fd, output_directory=tfd)
+      #p.random_distortion(probability=1.0, grid_width=10, grid_height=10, magnitude=5)
+      #p.flip_left_right(probability=0.5)
+      #for i in range(10):
+      #    p.process()
+      #del p
+
   normalize = transforms.Normalize(mean=(0.485, 0.456, 0.406),
                                    std=(0.229, 0.224, 0.225))
 
   train_ds = datasets.ImageFolder(
-      "./data/cub200_cropped/train_cropped/", 
+      "./data/cub200_cropped/train_cropped_augmented/", 
       transforms.Compose([
           transforms.Resize(size=(224, 224)),
           transforms.ToTensor(),
           normalize,
+      ]))
+  
+  train_push_ds = datasets.ImageFolder(
+      "./data/cub200_cropped/train_cropped/", 
+      transforms.Compose([
+          transforms.Resize(size=(224, 224)),
+          transforms.ToTensor(),
       ]))
 
   val_ds = datasets.ImageFolder(
@@ -375,26 +439,5 @@ def cub200(dataset_cfg: dict):
           normalize,
       ]))
 
-  return train_ds, val_ds, test_ds
+  return train_ds, train_push_ds, val_ds, test_ds
 
-def inaturalist(dataset_cfg: dict):
-  # transform and augment
-  transform = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
-  ])
-
-  # split
-  train_split, val_split, _ = dataset_cfg["split"]
-  total_split = train_split + val_split
-  train_p = train_split / total_split
-  val_p = val_split / total_split
-
-  # Using '2021_train_mini' as a default for training/validation
-  # and '2021_valid' for testing.
-  full_train_ds = datasets.INaturalist(root='./data/iNaturalist', version='2021_train_mini', transform=transform, download=True)
-  train_ds, val_ds = random_split(full_train_ds, [train_p, val_p])
-  test_ds = datasets.INaturalist(root='./data/iNaturalist', version='2021_valid', transform=transform, download=True)
-
-  return train_ds, val_ds, test_ds

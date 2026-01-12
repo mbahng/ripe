@@ -21,17 +21,32 @@ def main(cfg: Config):
   pprint(trainer.metrics)
   logger.save(trainer)
 
-  for epoch in range(cfg["run"]["epoch"] + 1, cfg["run"]["total_epochs"]):
-    print(f"Epoch: {epoch}")
-    trainer.train()
+  for _ in range(cfg["run"]["warm_epochs"]):
+    trainer.train(stage="warm")
     trainer.val()
+    pprint(trainer.metrics)
+    logger.save(trainer)  
 
+  for joint_epoch in range(cfg["run"]["joint_epochs"]): 
+    if joint_epoch % cfg["run"]["push_every"]: 
+      trainer.push(visualize=False) 
+      continue
+
+    trainer.train(stage="joint")
+    trainer.val()
     pprint(trainer.metrics)
     logger.save(trainer)
 
+  # push last time 
+  trainer.push(visualize=True) 
+
+  for _ in range(5): 
+    trainer.train(stage="last") 
+    trainer.val()
+    pprint(trainer.metrics)
+    logger.save(trainer)  
+
   # final epoch with test dataset evaluation
-  trainer.train()
-  trainer.val()
   trainer.test()
 
   print(f"Epoch: {cfg['run']['total_epochs']}")
