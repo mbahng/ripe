@@ -342,4 +342,4 @@ def inaturalist(dataset_cfg: dict) -> Dict[str, Dataset]:
   train_ds, val_ds = random_split(full_train_ds, [train_p, val_p])
   test_ds = datasets.INaturalist(root='./data/iNaturalist', version='2021_valid', transform=transform, download=True)
 
-  return {"train" : train_ds, "val": val_ds, "test": test_ds}
+  return {"train" : train_ds, "push": train_ds, "val": val_ds, "test": test_ds}
