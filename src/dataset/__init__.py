@@ -69,19 +69,23 @@ def init_dataset(cfg_dataset: dict) -> Dict[str, Dataset]:
 
   # subsample 
   train_samples = cfg_dataset["train"]["subsample"]
+  push_samples = cfg_dataset["push"]["subsample"]
   val_samples = cfg_dataset["val"]["subsample"] 
   test_samples = cfg_dataset["test"]["subsample"]
   if isinstance(train_samples, float): 
     train_samples = int(train_samples * len(train_ds))
+  if isinstance(push_samples, float): 
+    push_samples = int(push_samples * len(push_ds))
   if isinstance(val_samples, float): 
     val_samples = int(val_samples * len(val_ds))
   if isinstance(test_samples, float): 
     test_samples = int(test_samples * len(test_ds))
   train_ds = Subset(train_ds, range(train_samples))
+  push_ds = Subset(push_ds, range(push_samples))
   val_ds = Subset(val_ds, range(val_samples))
   test_ds = Subset(test_ds, range(test_samples)) 
 
-  return train_ds, val_ds, test_ds
+  return train_ds, push_ds, val_ds, test_ds
 
 def collate(batch):
   """
@@ -120,7 +124,7 @@ def collate(batch):
   return res
 
 def init_dataloader(cfg_dataset: dict) -> Tuple[DataLoader, DataLoader, DataLoader]: 
-  train_ds, val_ds, test_ds = init_dataset(cfg_dataset)
+  train_ds, push_ds, val_ds, test_ds = init_dataset(cfg_dataset)
 
   if cfg_dataset["is_distributed"]: 
     if cfg_dataset["train"]["shuffle"]: 
@@ -128,6 +132,12 @@ def init_dataloader(cfg_dataset: dict) -> Tuple[DataLoader, DataLoader, DataLoad
       cfg_dataset["train"]["shuffle"] = False
 
     train_dl = DataLoader(train_ds, 
+                          batch_size=cfg_dataset["train"]["batch_size"], 
+                          shuffle=cfg_dataset["train"]["shuffle"], 
+                          num_workers=cfg_dataset["train"]["num_workers"],
+                          sampler=DistributedSampler(train_ds, seed=cfg_dataset["seed"]),
+                          collate_fn=collate)
+    push_dl = DataLoader(push_ds, 
                           batch_size=cfg_dataset["train"]["batch_size"], 
                           shuffle=cfg_dataset["train"]["shuffle"], 
                           num_workers=cfg_dataset["train"]["num_workers"],
@@ -149,6 +159,11 @@ def init_dataloader(cfg_dataset: dict) -> Tuple[DataLoader, DataLoader, DataLoad
                           shuffle=cfg_dataset["train"]["shuffle"], 
                           num_workers=cfg_dataset["train"]["num_workers"], 
                           collate_fn=collate)
+    push_dl = DataLoader(push_ds, 
+                          batch_size=cfg_dataset["train"]["batch_size"], 
+                          shuffle=cfg_dataset["train"]["shuffle"], 
+                          num_workers=cfg_dataset["train"]["num_workers"], 
+                          collate_fn=collate)
     val_dl = DataLoader(val_ds, 
                         batch_size=cfg_dataset["val"]["batch_size"], 
                         num_workers=cfg_dataset["val"]["num_workers"], 
@@ -158,4 +173,4 @@ def init_dataloader(cfg_dataset: dict) -> Tuple[DataLoader, DataLoader, DataLoad
                          num_workers=cfg_dataset["test"]["num_workers"], 
                          collate_fn=collate)
 
-  return train_dl, val_dl, test_dl
+  return train_dl, push_dl, val_dl, test_dl
