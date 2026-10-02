@@ -11,3 +11,4 @@ wandb
 scipy 
 gdown 
 kagglehub
+opencv-python
