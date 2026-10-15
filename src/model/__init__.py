@@ -1,7 +1,9 @@
 import torch
-from .mlp import * 
+from .convolutional import * 
+from .resnet import *
 from .protopnet import *
-# from .prototree import *
+from .prototree import *
+from .geneticcnn import *
 from torch.nn import Module
 from copy import deepcopy
 
@@ -13,15 +15,36 @@ def init_model(cfg_model: dict) -> Module:
   name = args.pop("name")
   ckpt_path = args.pop("checkpoint", None) 
   match name: 
-    case "mlp": 
-      print("Loading Model: MLP")
-      model = MLP(**args)
+    case "convolutional": 
+      print("Loading Model: Convolutional Network")
+      model = ConvNet(**args) 
+    case "resnet18": 
+      print("Loading Model: Resnet 18") 
+      model = ResNet(block=BasicBlock, layers=[2, 2, 2, 2], pretrained="resnet18", **args)
+    case "resnet34": 
+      print("Loading Model: Resnet 34") 
+      model = ResNet(block=BasicBlock, layers=[3, 4, 6, 3], pretrained="resnet34", **args)
+    case "resnet50[pretraining=inaturalist]": 
+      print("Loading Model: Resnet 50 [pretraining=inaturalist]") 
+      model = ResNet(block=Bottleneck, layers=[3, 4, 6, 3], pretrained="resnet50[pretraining=inaturalist]", **args)
+    case "resnet50": 
+      print("Loading Model: Resnet 50") 
+      model = ResNet(block=Bottleneck, layers=[3, 4, 6, 3], pretrained="resnet50", **args)
+    case "resnet101": 
+      print("Loading Model: Resnet 101") 
+      model = ResNet(block=Bottleneck, layers=[3, 4, 23, 3], pretrained="resnet101", **args)
+    case "resnet152": 
+      print("Loading Model: Resnet 152") 
+      model = ResNet(block=Bottleneck, layers=[3, 8, 36, 3], pretrained="resnet152", **args)
     case "protopnet": 
       print("Loading Model: ProtoPNet")
       model = ProtoPNet(**args)
-    # case "prototree": 
-    #   print("Loading Model: ProtoTree")
-    #   model = ProtoTree(**args)
+    case "geneticcnn": 
+      print("Loading Model: Genetic CNN")
+      model = GeneticCNN2D(**args)
+    case "prototree": 
+      print("Loading Model: ProtoTree")
+      model = ProtoTree(**args)
     case _: 
       raise Exception("Model not defined")
 

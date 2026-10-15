@@ -1,0 +1,108 @@
+name: protopnet_bioscan1m_v1
+seed: 0
+n_gpus: 1
+run:
+  dataset:
+    name: bioscan1m
+    rank: species
+    min_species_samples: 10
+    split_strategy: stratified
+    split:
+    - 0.6
+    - 0.2
+    - 0.2
+    seed: 0
+    oversample: 1.0
+    augmentation:
+      hflip: 0.5
+      vflip: 0.5
+      rotation: 180
+      crop:
+      - 0.6
+      - 1.0
+      color_jitter: 0.2
+    train:
+      subsample: 1.0
+      batch_size: 16
+      num_workers: 4
+      pin_memory: true
+      shuffle: true
+    push:
+      subsample: 1.0
+      batch_size: 16
+      num_workers: 4
+      pin_memory: true
+      shuffle: false
+    val:
+      subsample: 1.0
+      batch_size: 16
+      num_workers: 4
+      pin_memory: true
+    test:
+      subsample: 1.0
+      batch_size: 16
+      num_workers: 4
+      pin_memory: true
+  epoch: 0
+  warm_epochs: 2
+  joint_epochs: 14
+  push_every: 6
+  last_only_epochs: 2
+  model:
+    name: protopnet
+    checkpoint: ''
+    backbone: resnet34
+    img_size: 224
+    prototype_shape:
+    - 2292
+    - 128
+    - 1
+    - 1
+    num_classes: 1146
+  loss:
+    name: ce
+    ce: 1.0
+    cluster: 0.8
+    separation: -0.08
+    l1: 0.0001
+    label_smoothing: 0.1
+  optimizer:
+    warm:
+      name: adam
+      checkpoint: ''
+      addon:
+        lr: 0.003
+        weight_decay: 0.001
+      prototype:
+        lr: 0.003
+    joint:
+      name: adam
+      checkpoint: ''
+      backbone:
+        lr: 0.0001
+        weight_decay: 0.01
+      addon:
+        lr: 0.003
+        weight_decay: 0.01
+      prototype:
+        lr: 0.003
+    last_layer:
+      name: adam
+      checkpoint: ''
+      lr: 0.0001
+log:
+  savedir: ''
+  track:
+    every: 1
+  checkpoint:
+    every: 2
+    model: true
+    optimizer: true
+  diagnose:
+    every: 5
+    weights: true
+    gradients: true
+  wandb:
+    enabled: true
+    entity: bahngmc-duke-university
+    project: ripe-overfit-sweep

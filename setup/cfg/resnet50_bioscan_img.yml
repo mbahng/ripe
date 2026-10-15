@@ -1,0 +1,84 @@
+name: ""                          # run name. If empty, then uses current timestamp
+seed: 0
+n_gpus: 1                         # 0 = cpu, 1 = cuda:0, >1 = multi-gpu setup
+
+run: 
+  dataset: 
+    name: "bioscan1m"               # name of the dataset
+    rank: "species"               # taxonomic target; missing values are excluded
+    min_species_samples: 10       # count after removing missing species, before splitting
+    oversample: 1.0               # BIOSCAN: balanced train size = X * filtered train size; null disables
+    split_strategy: "stratified"
+    seed: 0                       # reproducible splitting and balancing
+    split: [0.6, 0.2, 0.2]          # species-stratified train/val/test ratios
+    augmentation:
+      hflip: 0.5
+      vflip: 0.5
+      rotation: 180
+      crop: [0.6, 1.0]
+      color_jitter: 0.2
+
+    train: 
+      subsample: 1.0
+      batch_size: 64
+      num_workers: 2
+      pin_memory: False 
+      shuffle: True
+      # augmentation: []              # potential augmentation 
+    push: 
+      subsample: 1.0 
+      batch_size: 64
+      num_workers: 2
+      pin_memory: False 
+      shuffle: False 
+    val: 
+      subsample: 1.0
+      batch_size: 64
+      num_workers: 2
+      pin_memory: False 
+    test: 
+      subsample: 1.0
+      batch_size: 64
+      num_workers: 2
+      pin_memory: False 
+
+  epoch: 0
+  total_epochs: 20
+
+  model:
+    name: "resnet50"
+    checkpoint: ""
+    num_classes: 1146              # species with at least 10 labeled samples
+
+  loss: 
+    name: "ce"
+    ce: 1.0 
+
+  optimizer: 
+    all: 
+      name: "adam"
+      checkpoint: ""
+      lr: 1e-3 
+      weight_decay: 1e-3
+
+log:
+  savedir: ""                       # dummy, will be overrided by saved/name 
+  track: 
+    every: 1 
+  checkpoint: 
+    every: 5 
+    model: True 
+    optimizer: True
+  diagnose: 
+    every: 5 
+    weights: True 
+    gradients: True 
+  wandb: 
+    enabled: True 
+    entity: "bahngmc-duke-university" 
+    project: ""
+
+
+
+
+

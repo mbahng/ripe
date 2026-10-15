@@ -10,10 +10,19 @@ import cv2
 import os 
 import matplotlib.pyplot as plt
 import wandb
+from pprint import pprint
+from ..optimizer import init_optimizer
+from ..dataset import init_dataloader
+from ..model import ProtoPNet
+
+# One wandb.Image per prototype is untenable once prototype counts scale with the
+# label space: 3918 prototypes x ~6 pushes is ~16k uploads per run, and unreadable
+# in the UI. Visualise a prefix of the prototypes instead.
+MAX_PROTOTYPE_IMAGES = 64
 
 class ProtoPNetTrainer(Trainer):
 
-  model: torch.nn.Module
+  model: ProtoPNet
 
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
@@ -35,14 +44,58 @@ class ProtoPNetTrainer(Trainer):
       "val" : deepcopy(self._metrics),
       "test" : deepcopy(self._metrics)
     }
+    # The base Trainer does not build dataloaders; each subclass does its own
+    # (cf. SupervisedTrainer). ProtoPNet additionally needs the push loader,
+    # whose images are unnormalised so prototypes project onto real patches.
+    dl_dict = init_dataloader(kwargs["dataset"])
+    self.train_dl, self.val_dl, self.test_dl = dl_dict["train"], dl_dict["val"], dl_dict["test"]
+    self.push_dl = dl_dict["push"]
+
     self.ce_coef = float(kwargs["loss"]["ce"])
     self.cluster_coef = float(kwargs["loss"]["cluster"])
     self.separation_coef = float(kwargs["loss"]["separation"])
     self.l1_coef = float(kwargs["loss"]["l1"])
 
+    self.epoch = kwargs["epoch"]
+    self.warm_epochs = kwargs["warm_epochs"] 
+    self.joint_epochs = kwargs["joint_epochs"] 
+    self.last_only_epochs = kwargs["last_only_epochs"] 
+    self.push_every = kwargs["push_every"]
+
+    self.warm_optimizer, self.joint_optimizer, self.last_optimizer = init_optimizer(kwargs["optimizer"], self.model)
+
+  def run(self, logger): 
+    for _ in range(self.epoch + 1, self.epoch + self.warm_epochs + 1):
+      self.train(stage="warm")
+      self.val()
+      pprint(self.metrics)
+      logger.save(self)  
+
+    for joint_epoch in range(self.epoch + self.warm_epochs + 1, self.epoch + self.warm_epochs + self.joint_epochs + 1): 
+      if joint_epoch % self.push_every == 0:
+        self.push(visualize=True) 
+        continue
+
+      self.train(stage="joint")
+      self.val()
+      pprint(self.metrics)
+      logger.save(self)
+
+    # push last time 
+    self.push(visualize=True) 
+
+    for _ in range(self.last_only_epochs): 
+      self.train(stage="last") 
+      self.val()
+      pprint(self.metrics)
+      logger.save(self)
+
   @torch.enable_grad
-  def train(self, initial=False, stage="warm"): 
-    if stage == "warm": 
+  def train(self, initial=False, stage="initial"): 
+    if stage == "initial": 
+      print("initial evaluation")
+      pass
+    elif stage == "warm": 
       self.model.warm_only() 
       optimizer = self.warm_optimizer
     elif stage == "joint": 
@@ -60,8 +113,8 @@ class ProtoPNetTrainer(Trainer):
     # Get the original terminal stdout if logger has redirected it
     tqdm_file = getattr(sys.stdout, 'terminal', sys.stdout)
     for batch in tqdm(self.train_dl, leave=False, file=tqdm_file):
-      label_cpu = batch["y"]
-      x, label = batch["x"].to(self.device), batch["y"].to(self.device)
+      label_cpu = (batch["label"] if "label" in batch else batch["y"])
+      x, label = (batch["img"] if "img" in batch else batch["x"]).to(self.device), (batch["label"] if "label" in batch else batch["y"]).to(self.device)
       logits, min_distances = self.model(x) 
       ce_loss = torch.nn.functional.cross_entropy(logits, label) 
 
@@ -141,8 +194,8 @@ class ProtoPNetTrainer(Trainer):
     # Get the original terminal stdout if logger has redirected it
     tqdm_file = getattr(sys.stdout, 'terminal', sys.stdout)
     for batch in tqdm(self.val_dl, leave=False, file=tqdm_file):
-      label_cpu = batch["y"]
-      x, label = batch["x"].to(self.device), batch["y"].to(self.device)
+      label_cpu = (batch["label"] if "label" in batch else batch["y"])
+      x, label = (batch["img"] if "img" in batch else batch["x"]).to(self.device), (batch["label"] if "label" in batch else batch["y"]).to(self.device)
       logits, min_distances = self.model(x) 
       ce_loss = torch.nn.functional.cross_entropy(logits, label) 
 
@@ -202,8 +255,8 @@ class ProtoPNetTrainer(Trainer):
     # Get the original terminal stdout if logger has redirected it
     tqdm_file = getattr(sys.stdout, 'terminal', sys.stdout)
     for batch in tqdm(self.test_dl, leave=False, file=tqdm_file):
-      label_cpu = batch["y"]
-      x, label = batch["x"].to(self.device), batch["y"].to(self.device)
+      label_cpu = (batch["label"] if "label" in batch else batch["y"])
+      x, label = (batch["img"] if "img" in batch else batch["x"]).to(self.device), (batch["label"] if "label" in batch else batch["y"]).to(self.device)
       logits, min_distances = self.model(x) 
       ce_loss = torch.nn.functional.cross_entropy(logits, label) 
 
@@ -256,7 +309,6 @@ class ProtoPNetTrainer(Trainer):
 
   @torch.no_grad
   def push(self, visualize=True): 
-
     def find_high_activation_crop(activation_map, percentile=95):
       threshold = np.percentile(activation_map, percentile)
       mask = np.ones(activation_map.shape)
@@ -290,6 +342,8 @@ class ProtoPNetTrainer(Trainer):
     # saves the patch representation that gives the current smallest distance
     global_min_fmap_patches = np.zeros(prototype_shape)   # (2000, 128, 1, 1)
 
+    prototype_images = {}  # collected here, logged once at the end to avoid consuming wandb steps
+
     '''
     proto_rf_boxes and proto_bound_boxes column:
     0: image index in the entire dataset
@@ -303,8 +357,8 @@ class ProtoPNetTrainer(Trainer):
     proto_bound_boxes = np.full(shape=[n_prototypes, 6], fill_value=-1)
 
     for push_iter, batch in enumerate(tqdm(self.push_dl, desc="push")): 
-      search_batch = batch["x"] 
-      search_y = batch["y"]
+      search_batch = (batch["img"] if "img" in batch else batch["x"]) 
+      search_y = (batch["label"] if "label" in batch else batch["y"])
 
       start_index_of_search_batch = push_iter * self.push_dl.batch_size
 
@@ -365,60 +419,66 @@ class ProtoPNetTrainer(Trainer):
                                                  fmap_width_start_index:fmap_width_end_index]
           # finally update the global minimmizers
           global_min_proto_dist[j] = batch_min_proto_dist_j
-          global_min_fmap_patches[j] = batch_min_fmap_patch_j 
+          global_min_fmap_patches[j] = batch_min_fmap_patch_j
 
-        """
-        Everything past this is visualization. Can ignore this if you don't want to worry about implementing visualization. 
-        """
+          if visualize and j < MAX_PROTOTYPE_IMAGES:
+            # get the receptive field boundary of the image patch that generates the representation
+            rf_prototype_j = compute_rf_prototype(search_batch.size(2), batch_argmin_proto_dist_j, self.model.proto_layer_rf_info)
 
-        if visualize: 
-          # get the receptive field boundary of the image patch that generates the representation
-          rf_prototype_j = compute_rf_prototype(search_batch.size(2), batch_argmin_proto_dist_j, self.model.proto_layer_rf_info)
-          
-          # get the whole image
-          original_img_j = search_batch[rf_prototype_j[0]]
-          original_img_j = original_img_j.clone().cpu().numpy()
-          original_img_j = np.transpose(original_img_j, (1, 2, 0))
-          original_img_size = original_img_j.shape[0]
-          
-          # crop out the receptive field
-          rf_img_j = original_img_j[rf_prototype_j[1]:rf_prototype_j[2],
-                                    rf_prototype_j[3]:rf_prototype_j[4], :]
-          
-          # save the prototype receptive field information
-          proto_rf_boxes[j, 0] = rf_prototype_j[0] + start_index_of_search_batch
-          proto_rf_boxes[j, 1] = rf_prototype_j[1]
-          proto_rf_boxes[j, 2] = rf_prototype_j[2]
-          proto_rf_boxes[j, 3] = rf_prototype_j[3]
-          proto_rf_boxes[j, 4] = rf_prototype_j[4]
-          if proto_rf_boxes.shape[1] == 6 and search_y is not None:
-            proto_rf_boxes[j, 5] = search_y[rf_prototype_j[0]].item()
+            # get the whole image
+            original_img_j = search_batch[rf_prototype_j[0]]
+            original_img_j = original_img_j.clone().cpu().numpy()
+            original_img_j = np.transpose(original_img_j, (1, 2, 0))
+            if original_img_j.shape[2] == 1:
+              original_img_j = np.repeat(original_img_j, 3, axis=2)
+            original_img_size = original_img_j.shape[0]
 
-          # find the highly activated region of the original image
-          proto_dist_img_j = proto_dist_[img_index_in_batch, j, :, :]
-          proto_act_img_j = 128 - proto_dist_img_j
-          upsampled_act_img_j = cv2.resize(proto_act_img_j, dsize=(original_img_size, original_img_size),
-                                           interpolation=cv2.INTER_CUBIC)
-          proto_bound_j = find_high_activation_crop(upsampled_act_img_j)
+            # crop out the receptive field
+            rf_img_j = original_img_j[rf_prototype_j[1]:rf_prototype_j[2],
+                                      rf_prototype_j[3]:rf_prototype_j[4], :]
 
-          # save the prototype boundary (rectangular boundary of highly activated region)
-          proto_bound_boxes[j, 0] = proto_rf_boxes[j, 0]
-          proto_bound_boxes[j, 1] = proto_bound_j[0]
-          proto_bound_boxes[j, 2] = proto_bound_j[1]
-          proto_bound_boxes[j, 3] = proto_bound_j[2]
-          proto_bound_boxes[j, 4] = proto_bound_j[3]
-          proto_bound_boxes[j, 5] = search_y[rf_prototype_j[0]].item()
+            # save the prototype receptive field information
+            proto_rf_boxes[j, 0] = rf_prototype_j[0] + start_index_of_search_batch
+            proto_rf_boxes[j, 1] = rf_prototype_j[1]
+            proto_rf_boxes[j, 2] = rf_prototype_j[2]
+            proto_rf_boxes[j, 3] = rf_prototype_j[3]
+            proto_rf_boxes[j, 4] = rf_prototype_j[4]
+            if proto_rf_boxes.shape[1] == 6 and search_y is not None:
+              proto_rf_boxes[j, 5] = search_y[rf_prototype_j[0]].item()
 
-          # overlay (upsampled) self activation on original image and save the result
-          rescaled_act_img_j = upsampled_act_img_j - np.amin(upsampled_act_img_j)
-          rescaled_act_img_j = rescaled_act_img_j / np.amax(rescaled_act_img_j)
-          heatmap = cv2.applyColorMap(np.uint8(255*rescaled_act_img_j), cv2.COLORMAP_JET)
-          heatmap = np.float32(heatmap) / 255
-          heatmap = heatmap[...,::-1]
-          overlayed_original_img_j = 0.5 * original_img_j + 0.3 * heatmap
-          # plt.imsave(os.path.join("saved", f"prototype_{j}.png"), overlayed_original_img_j, vmin=0.0, vmax=1.0)
-          wandb.log({f"prototype_{j}": wandb.Image(overlayed_original_img_j, caption=f"Prototype {j}")})
+            # find the highly activated region of the original image
+            proto_dist_img_j = proto_dist_[img_index_in_batch, j, :, :]
+            proto_act_img_j = 128 - proto_dist_img_j
+            upsampled_act_img_j = cv2.resize(proto_act_img_j, dsize=(original_img_size, original_img_size),
+                                             interpolation=cv2.INTER_CUBIC)
+            proto_bound_j = find_high_activation_crop(upsampled_act_img_j)
+
+            # save the prototype boundary (rectangular boundary of highly activated region)
+            proto_bound_boxes[j, 0] = proto_rf_boxes[j, 0]
+            proto_bound_boxes[j, 1] = proto_bound_j[0]
+            proto_bound_boxes[j, 2] = proto_bound_j[1]
+            proto_bound_boxes[j, 3] = proto_bound_j[2]
+            proto_bound_boxes[j, 4] = proto_bound_j[3]
+            proto_bound_boxes[j, 5] = search_y[rf_prototype_j[0]].item()
+
+            # overlay (upsampled) self activation on original image and save the result
+            rescaled_act_img_j = upsampled_act_img_j - np.amin(upsampled_act_img_j)
+            amax = np.amax(rescaled_act_img_j)
+            if amax > 0:
+              rescaled_act_img_j = rescaled_act_img_j / amax
+            heatmap = cv2.applyColorMap(np.uint8(255*rescaled_act_img_j), cv2.COLORMAP_JET)
+            heatmap = np.ascontiguousarray(np.float32(heatmap)[...,::-1]) / 255
+            overlayed_original_img_j = 0.5 * original_img_j + 0.5 * heatmap
+            vmax = np.amax(overlayed_original_img_j)
+            if vmax > 0:
+              overlayed_original_img_j = overlayed_original_img_j / vmax
+            img_uint8 = np.uint8(np.clip(overlayed_original_img_j * 255, 0, 255))
+            prototype_images[f"prototype_{j:04d}"] = wandb.Image(img_uint8, caption=f"Prototype {j:04d}")
                     
     # now that we have all patches for which prototypes should get pushed to, push. 
+    # wandb.run is None when log.wandb.enabled is false; logging then raises.
+    if visualize and prototype_images and wandb.run is not None:
+      wandb.log(prototype_images)
+
     prototype_update = np.reshape(global_min_fmap_patches, tuple(prototype_shape))
     self.model.prototype_vectors.data.copy_(torch.tensor(prototype_update, dtype=torch.float32).cuda())

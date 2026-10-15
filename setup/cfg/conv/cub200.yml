@@ -1,0 +1,76 @@
+name: ""                          # run name. If empty, then uses current timestamp
+seed: 0
+n_gpus: 1                         # 0 = cpu, 1 = cuda:0, >1 = multi-gpu setup
+
+run: 
+  dataset: 
+    name: "cub200"                        # name of the dataset
+    split: [0.6, 0.2, 0.2]          # train/val/test split. If the split is provided, then it ignores this. If there is already a train/test split, then we divide the train set into train/val split according to the ratio of the first two elements of the tuple. 
+    train: 
+      subsample: 1.0
+      batch_size: 32
+      num_workers: 0
+      pin_memory: False 
+      shuffle: True
+      # augmentation: []              # potential augmentation 
+    push: 
+      subsample: 1.0 
+      batch_size: 128
+      num_workers: 0
+      pin_memory: False 
+      shuffle: False 
+    val: 
+      subsample: 1.0
+      batch_size: 128
+      num_workers: 0
+      pin_memory: False 
+    test: 
+      subsample: 1.0
+      batch_size: 128
+      num_workers: 0
+      pin_memory: False 
+
+  epoch: 0
+  total_epochs: 50
+
+  model:
+    name: "convolutional"
+    checkpoint: ""
+    in_channels: 3
+    img_size: 224
+    out_channels: 128
+    num_classes: 200
+
+  loss: 
+    name: "ce"
+    ce: 1.0 
+
+  optimizer: 
+    all: 
+      name: "adam"
+      checkpoint: ""
+      lr: 1e-3
+      weight_decay: 0.
+
+log:
+  savedir: ""                       # dummy, will be overrided by saved/name 
+  track: 
+    every: 1 
+  checkpoint: 
+    every: 5 
+    model: True 
+    optimizer: True
+  diagnose: 
+    every: 5 
+    weights: True 
+    gradients: True 
+  wandb: 
+    enabled: False
+    entity: "bahngmc-duke-university" 
+    project: ""
+
+
+
+
+
+

@@ -1,0 +1,73 @@
+name: geneticcnn_bioscan1m_v1
+seed: 0
+n_gpus: 1
+run:
+  dataset:
+    name: bioscan1m
+    rank: species
+    min_species_samples: 10
+    split_strategy: stratified
+    split:
+    - 0.6
+    - 0.2
+    - 0.2
+    seed: 0
+    oversample: 1.0
+    modality: dna
+    dna_length: 720
+    train:
+      subsample: 1.0
+      batch_size: 64
+      num_workers: 6
+      pin_memory: true
+      shuffle: true
+    push:
+      subsample: 1.0
+      batch_size: 64
+      num_workers: 6
+      pin_memory: true
+      shuffle: false
+    val:
+      subsample: 1.0
+      batch_size: 64
+      num_workers: 6
+      pin_memory: true
+    test:
+      subsample: 1.0
+      batch_size: 64
+      num_workers: 6
+      pin_memory: true
+  epoch: 0
+  total_epochs: 40
+  model:
+    name: geneticcnn
+    checkpoint: ''
+    length: 720
+    class_count: 1146
+    include_connected_layer: true
+  loss:
+    name: ce
+    ce: 1.0
+    label_smoothing: 0.1
+  optimizer:
+    all:
+      name: adam
+      checkpoint: ''
+      lr: 0.001
+      weight_decay: 0.0001
+log:
+  savedir: ''
+  track:
+    every: 1
+  checkpoint:
+    every: 5
+    model: true
+    optimizer: true
+  diagnose:
+    every: 5
+    weights: true
+    gradients: true
+  wandb:
+    enabled: true
+    entity: bahngmc-duke-university
+    project: ripe-overfit-sweep

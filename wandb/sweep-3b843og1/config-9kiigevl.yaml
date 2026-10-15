@@ -1,0 +1,8 @@
+wandb_version: 1
+
+run.dataset.train.batch_size:
+  value: 64
+run.optimizer.all.lr:
+  value: 0.0013282116767291217
+run.optimizer.all.weight_decay:
+  value: 0.000172925864565445

@@ -1,0 +1,95 @@
+name: protopnet_cub200_v1
+seed: 0
+n_gpus: 1
+run:
+  dataset:
+    name: cub200
+    split:
+    - 0.6
+    - 0.2
+    - 0.2
+    train:
+      subsample: 1.0
+      batch_size: 32
+      num_workers: 4
+      pin_memory: true
+      shuffle: true
+    push:
+      subsample: 1.0
+      batch_size: 32
+      num_workers: 4
+      pin_memory: true
+      shuffle: false
+    val:
+      subsample: 1.0
+      batch_size: 32
+      num_workers: 4
+      pin_memory: true
+    test:
+      subsample: 1.0
+      batch_size: 32
+      num_workers: 4
+      pin_memory: true
+  epoch: 0
+  warm_epochs: 3
+  joint_epochs: 30
+  push_every: 6
+  last_only_epochs: 3
+  model:
+    name: protopnet
+    checkpoint: ''
+    backbone: resnet34
+    img_size: 224
+    prototype_shape:
+    - 2000
+    - 128
+    - 1
+    - 1
+    num_classes: 200
+  loss:
+    name: ce
+    ce: 1.0
+    cluster: 0.8
+    separation: -0.08
+    l1: 0.0001
+    label_smoothing: 0.1
+  optimizer:
+    warm:
+      name: adam
+      checkpoint: ''
+      addon:
+        lr: 0.003
+        weight_decay: 0.001
+      prototype:
+        lr: 0.003
+    joint:
+      name: adam
+      checkpoint: ''
+      backbone:
+        lr: 0.0001
+        weight_decay: 0.01
+      addon:
+        lr: 0.003
+        weight_decay: 0.01
+      prototype:
+        lr: 0.003
+    last_layer:
+      name: adam
+      checkpoint: ''
+      lr: 0.0001
+log:
+  savedir: ''
+  track:
+    every: 1
+  checkpoint:
+    every: 2
+    model: true
+    optimizer: true
+  diagnose:
+    every: 5
+    weights: true
+    gradients: true
+  wandb:
+    enabled: true
+    entity: bahngmc-duke-university
+    project: ripe-overfit-sweep

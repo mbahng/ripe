@@ -2,15 +2,31 @@ from typing import Tuple
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
-from .backbone import resnet34_features
+from .resnet import ResNet, BasicBlock, Bottleneck
 from ..receptive_field import compute_proto_layer_rf_info_v2
 
 class ProtoPNet(nn.Module): 
 
-  def __init__(self, img_size, prototype_shape = (2000, 128, 1, 1), num_classes = 200): 
+  def __init__(self, img_size, backbone: str, prototype_shape = (2000, 128, 1, 1), num_classes = 200): 
     super().__init__()
     self.img_size = img_size
-    self.backbone = resnet34_features(pretrained=True)
+
+    # num_classes=0 drops ResNet's fc/avgpool, so forward() returns the
+    # (B, C, H, W) feature map ProtoPNet needs, and conv_info() supplies the
+    # receptive-field geometry. Replaces the deleted backbone.py helpers.
+    match backbone: 
+      case "resnet18": 
+        self.backbone = ResNet(block=BasicBlock, layers=[2, 2, 2, 2],
+                               num_classes=0, pretrained="resnet18")
+      case "resnet34": 
+        self.backbone = ResNet(block=BasicBlock, layers=[3, 4, 6, 3],
+                               num_classes=0, pretrained="resnet34")
+      case "resnet50": 
+        self.backbone = ResNet(block=Bottleneck, layers=[3, 4, 6, 3],
+                               num_classes=0, pretrained="resnet50")
+      case _: 
+        raise ValueError(
+          f"Backbone {backbone!r} not valid. Choose resnet18, resnet34 or resnet50.")
 
     first_add_on_layer_in_channels = [i for i in self.backbone.modules() if isinstance(i, nn.Conv2d)][-1].out_channels
 

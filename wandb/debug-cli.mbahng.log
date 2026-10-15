@@ -1,0 +1,315 @@
+2026-10-16 15:57:44 ERROR Traceback (most recent call last):
+  File "/home/mbahng/Research/ripe/.venv/lib/python3.11/site-packages/wandb/apis/normalize.py", line 28, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mbahng/Research/ripe/.venv/lib/python3.11/site-packages/wandb/apis/public/sweeps.py", line 838, in _upsert_sweep
+    raise err
+  File "/home/mbahng/Research/ripe/.venv/lib/python3.11/site-packages/wandb/apis/public/sweeps.py", line 828, in _upsert_sweep
+    response = api._service_api.execute_graphql(mutation, variables=variables)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mbahng/Research/ripe/.venv/lib/python3.11/site-packages/wandb/apis/public/service_api.py", line 192, in execute_graphql
+    resp = self.send_api_request(
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mbahng/Research/ripe/.venv/lib/python3.11/site-packages/wandb/apis/public/service_api.py", line 110, in send_api_request
+    return session.connection.api_request(request, timeout=timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mbahng/Research/ripe/.venv/lib/python3.11/site-packages/wandb/sdk/lib/service/service_connection.py", line 259, in api_request
+    raise WandbApiFailedError(
+wandb.sdk.lib.service.service_connection.WandbApiFailedError: cannot reconfigure sweep which has already started
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/mbahng/Research/ripe/.venv/lib/python3.11/site-packages/wandb/cli/cli.py", line 168, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mbahng/Research/ripe/.venv/lib/python3.11/site-packages/wandb/cli/cli.py", line 1013, in sweep
+    sweep_obj, warnings = _upsert_sweep(
+                          ^^^^^^^^^^^^^^
+  File "/home/mbahng/Research/ripe/.venv/lib/python3.11/site-packages/wandb/apis/normalize.py", line 37, in wrapper
+    raise CommError(message, err) from err
+wandb.errors.errors.CommError: cannot reconfigure sweep which has already started
+Traceback (most recent call last):
+  File "/home/mbahng/Research/ripe/.venv/lib/python3.11/site-packages/wandb/apis/normalize.py", line 28, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mbahng/Research/ripe/.venv/lib/python3.11/site-packages/wandb/apis/public/sweeps.py", line 838, in _upsert_sweep
+    raise err
+  File "/home/mbahng/Research/ripe/.venv/lib/python3.11/site-packages/wandb/apis/public/sweeps.py", line 828, in _upsert_sweep
+    response = api._service_api.execute_graphql(mutation, variables=variables)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mbahng/Research/ripe/.venv/lib/python3.11/site-packages/wandb/apis/public/service_api.py", line 192, in execute_graphql
+    resp = self.send_api_request(
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mbahng/Research/ripe/.venv/lib/python3.11/site-packages/wandb/apis/public/service_api.py", line 110, in send_api_request
+    return session.connection.api_request(request, timeout=timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mbahng/Research/ripe/.venv/lib/python3.11/site-packages/wandb/sdk/lib/service/service_connection.py", line 259, in api_request
+    raise WandbApiFailedError(
+wandb.sdk.lib.service.service_connection.WandbApiFailedError: cannot reconfigure sweep which has already started
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/mbahng/Research/ripe/.venv/lib/python3.11/site-packages/wandb/cli/cli.py", line 168, in wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/mbahng/Research/ripe/.venv/lib/python3.11/site-packages/wandb/cli/cli.py", line 1013, in sweep
+    sweep_obj, warnings = _upsert_sweep(
+                          ^^^^^^^^^^^^^^
+  File "/home/mbahng/Research/ripe/.venv/lib/python3.11/site-packages/wandb/apis/normalize.py", line 37, in wrapper
+    raise CommError(message, err) from err
+wandb.errors.errors.CommError: cannot reconfigure sweep which has already started
+2026-10-16 15:57:44 INFO Reached EOF.
+2026-10-16 15:57:44 INFO Closing mailbox, abandoning 0 handles.
+2026-10-16 15:58:22 INFO Reached EOF.
+2026-10-16 15:58:22 INFO Closing mailbox, abandoning 0 handles.
+2026-10-16 15:58:56 INFO Reached EOF.
+2026-10-16 15:58:56 INFO Closing mailbox, abandoning 0 handles.
+2026-10-16 15:59:08 INFO Running runs: []
+2026-10-16 15:59:09 INFO Agent received command: run
+2026-10-16 15:59:09 INFO Agent starting run with config:
+	run.dataset.train.batch_size: 64
+	run.optimizer.all.lr: 3.643241505872454e-05
+	run.optimizer.all.weight_decay: 0.0005386733963573253
+2026-10-16 15:59:09 INFO About to run command: /usr/bin/env python main.py --cfg=setup/cfg/resnet50/bioscan1m.yml --run.dataset.train.batch_size=64 --run.optimizer.all.lr=3.643241505872454e-05 --run.optimizer.all.weight_decay=0.0005386733963573253
+2026-10-16 15:59:14 INFO Running runs: ['4i46pgms']
+2026-10-16 16:54:08 INFO Cleaning up finished run: 4i46pgms
+2026-10-16 16:54:08 INFO Reached EOF.
+2026-10-16 16:54:08 INFO Closing mailbox, abandoning 0 handles.
+2026-10-16 16:54:09 INFO Agent received command: run
+2026-10-16 16:54:09 INFO Agent starting run with config:
+	run.dataset.train.batch_size: 32
+	run.optimizer.all.lr: 0.002344344566132091
+	run.optimizer.all.weight_decay: 0.00015574994301849736
+2026-10-16 16:54:09 INFO About to run command: /usr/bin/env python main.py --cfg=setup/cfg/resnet50/bioscan1m.yml --run.dataset.train.batch_size=32 --run.optimizer.all.lr=0.002344344566132091 --run.optimizer.all.weight_decay=0.00015574994301849736
+2026-10-16 16:54:14 INFO Running runs: ['8qn2wwy5']
+2026-10-16 17:49:30 INFO Cleaning up finished run: 8qn2wwy5
+2026-10-16 17:49:30 INFO Reached EOF.
+2026-10-16 17:49:30 INFO Closing mailbox, abandoning 0 handles.
+2026-10-16 17:49:31 INFO Agent received command: run
+2026-10-16 17:49:31 INFO Agent starting run with config:
+	run.dataset.train.batch_size: 64
+	run.optimizer.all.lr: 0.006403032703740482
+	run.optimizer.all.weight_decay: 0.0012610225411029932
+2026-10-16 17:49:31 INFO About to run command: /usr/bin/env python main.py --cfg=setup/cfg/resnet50/bioscan1m.yml --run.dataset.train.batch_size=64 --run.optimizer.all.lr=0.006403032703740482 --run.optimizer.all.weight_decay=0.0012610225411029932
+2026-10-16 17:49:36 INFO Running runs: ['32jhp0yt']
+2026-10-16 18:44:25 INFO Cleaning up finished run: 32jhp0yt
+2026-10-16 18:44:25 INFO Reached EOF.
+2026-10-16 18:44:25 INFO Closing mailbox, abandoning 0 handles.
+2026-10-16 18:44:26 INFO Agent received command: run
+2026-10-16 18:44:26 INFO Agent starting run with config:
+	run.dataset.train.batch_size: 128
+	run.optimizer.all.lr: 0.0002457622330915424
+	run.optimizer.all.weight_decay: 0.03185646217326246
+2026-10-16 18:44:26 INFO About to run command: /usr/bin/env python main.py --cfg=setup/cfg/resnet50/bioscan1m.yml --run.dataset.train.batch_size=128 --run.optimizer.all.lr=0.0002457622330915424 --run.optimizer.all.weight_decay=0.03185646217326246
+2026-10-16 18:44:31 INFO Running runs: ['sy199zrs']
+2026-10-16 18:44:36 INFO Cleaning up finished run: sy199zrs
+2026-10-16 18:44:36 INFO Reached EOF.
+2026-10-16 18:44:36 INFO Closing mailbox, abandoning 0 handles.
+2026-10-16 18:44:37 INFO Agent received command: run
+2026-10-16 18:44:37 INFO Agent starting run with config:
+	run.dataset.train.batch_size: 32
+	run.optimizer.all.lr: 4.55191239182564e-05
+	run.optimizer.all.weight_decay: 0.024454651850014855
+2026-10-16 18:44:37 INFO About to run command: /usr/bin/env python main.py --cfg=setup/cfg/resnet50/bioscan1m.yml --run.dataset.train.batch_size=32 --run.optimizer.all.lr=4.55191239182564e-05 --run.optimizer.all.weight_decay=0.024454651850014855
+2026-10-16 18:44:42 INFO Running runs: ['hu07kk7a']
+2026-10-16 19:40:26 INFO Cleaning up finished run: hu07kk7a
+2026-10-16 19:40:26 INFO Reached EOF.
+2026-10-16 19:40:26 INFO Closing mailbox, abandoning 0 handles.
+2026-10-16 19:40:26 INFO Agent received command: run
+2026-10-16 19:40:26 INFO Agent starting run with config:
+	run.dataset.train.batch_size: 128
+	run.optimizer.all.lr: 1.3906905091091344e-05
+	run.optimizer.all.weight_decay: 0.016389915240785768
+2026-10-16 19:40:26 INFO About to run command: /usr/bin/env python main.py --cfg=setup/cfg/resnet50/bioscan1m.yml --run.dataset.train.batch_size=128 --run.optimizer.all.lr=1.3906905091091344e-05 --run.optimizer.all.weight_decay=0.016389915240785768
+2026-10-16 19:40:31 INFO Running runs: ['0ww9dqme']
+2026-10-16 19:40:37 INFO Cleaning up finished run: 0ww9dqme
+2026-10-16 19:40:37 INFO Reached EOF.
+2026-10-16 19:40:37 INFO Closing mailbox, abandoning 0 handles.
+2026-10-16 19:40:38 INFO Agent received command: run
+2026-10-16 19:40:38 INFO Agent starting run with config:
+	run.dataset.train.batch_size: 64
+	run.optimizer.all.lr: 0.004135007867340356
+	run.optimizer.all.weight_decay: 0.0902257103997353
+2026-10-16 19:40:38 INFO About to run command: /usr/bin/env python main.py --cfg=setup/cfg/resnet50/bioscan1m.yml --run.dataset.train.batch_size=64 --run.optimizer.all.lr=0.004135007867340356 --run.optimizer.all.weight_decay=0.0902257103997353
+2026-10-16 19:40:43 INFO Running runs: ['v2o55p2o']
+2026-10-16 20:35:57 INFO Cleaning up finished run: v2o55p2o
+2026-10-16 20:35:57 INFO Reached EOF.
+2026-10-16 20:35:57 INFO Closing mailbox, abandoning 0 handles.
+2026-10-16 20:35:58 INFO Agent received command: run
+2026-10-16 20:35:58 INFO Agent starting run with config:
+	run.dataset.train.batch_size: 128
+	run.optimizer.all.lr: 0.0002457622330915424
+	run.optimizer.all.weight_decay: 0.03185646217326246
+2026-10-16 20:35:58 INFO About to run command: /usr/bin/env python main.py --cfg=setup/cfg/resnet50/bioscan1m.yml --run.dataset.train.batch_size=128 --run.optimizer.all.lr=0.0002457622330915424 --run.optimizer.all.weight_decay=0.03185646217326246
+2026-10-16 20:36:03 INFO Running runs: ['sy199zrs']
+2026-10-16 20:36:08 INFO Cleaning up finished run: sy199zrs
+2026-10-16 20:36:08 INFO Reached EOF.
+2026-10-16 20:36:08 INFO Closing mailbox, abandoning 0 handles.
+2026-10-16 20:36:09 INFO Agent received command: run
+2026-10-16 20:36:09 INFO Agent starting run with config:
+	run.dataset.train.batch_size: 64
+	run.optimizer.all.lr: 0.0008324640358830699
+	run.optimizer.all.weight_decay: 0.013289578411681269
+2026-10-16 20:36:09 INFO About to run command: /usr/bin/env python main.py --cfg=setup/cfg/resnet50/bioscan1m.yml --run.dataset.train.batch_size=64 --run.optimizer.all.lr=0.0008324640358830699 --run.optimizer.all.weight_decay=0.013289578411681269
+2026-10-16 20:36:14 INFO Running runs: ['huo2wuqk']
+2026-10-16 21:30:46 INFO Cleaning up finished run: huo2wuqk
+2026-10-16 21:30:46 INFO Reached EOF.
+2026-10-16 21:30:46 INFO Closing mailbox, abandoning 0 handles.
+2026-10-16 21:30:47 INFO Agent received command: run
+2026-10-16 21:30:47 INFO Agent starting run with config:
+	run.dataset.train.batch_size: 128
+	run.optimizer.all.lr: 1.3906905091091344e-05
+	run.optimizer.all.weight_decay: 0.016389915240785768
+2026-10-16 21:30:47 INFO About to run command: /usr/bin/env python main.py --cfg=setup/cfg/resnet50/bioscan1m.yml --run.dataset.train.batch_size=128 --run.optimizer.all.lr=1.3906905091091344e-05 --run.optimizer.all.weight_decay=0.016389915240785768
+2026-10-16 21:30:52 INFO Running runs: ['0ww9dqme']
+2026-10-16 21:30:57 INFO Cleaning up finished run: 0ww9dqme
+2026-10-16 21:30:57 INFO Reached EOF.
+2026-10-16 21:30:57 INFO Closing mailbox, abandoning 0 handles.
+2026-10-16 21:30:58 INFO Agent received command: run
+2026-10-16 21:30:58 INFO Agent starting run with config:
+	run.dataset.train.batch_size: 32
+	run.optimizer.all.lr: 8.272086775040474e-05
+	run.optimizer.all.weight_decay: 0.00012545033066563725
+2026-10-16 21:30:58 INFO About to run command: /usr/bin/env python main.py --cfg=setup/cfg/resnet50/bioscan1m.yml --run.dataset.train.batch_size=32 --run.optimizer.all.lr=8.272086775040474e-05 --run.optimizer.all.weight_decay=0.00012545033066563725
+2026-10-16 21:31:03 INFO Running runs: ['9520cx3w']
+2026-10-16 22:26:40 INFO Cleaning up finished run: 9520cx3w
+2026-10-16 22:26:40 INFO Reached EOF.
+2026-10-16 22:26:40 INFO Closing mailbox, abandoning 0 handles.
+2026-10-16 22:26:40 INFO Agent received command: run
+2026-10-16 22:26:40 INFO Agent starting run with config:
+	run.dataset.train.batch_size: 128
+	run.optimizer.all.lr: 0.0002457622330915424
+	run.optimizer.all.weight_decay: 0.03185646217326246
+2026-10-16 22:26:40 INFO About to run command: /usr/bin/env python main.py --cfg=setup/cfg/resnet50/bioscan1m.yml --run.dataset.train.batch_size=128 --run.optimizer.all.lr=0.0002457622330915424 --run.optimizer.all.weight_decay=0.03185646217326246
+2026-10-16 22:26:45 INFO Running runs: ['sy199zrs']
+2026-10-16 22:26:50 INFO Cleaning up finished run: sy199zrs
+2026-10-16 22:26:50 INFO Reached EOF.
+2026-10-16 22:26:50 INFO Closing mailbox, abandoning 0 handles.
+2026-10-16 22:26:51 INFO Agent received command: run
+2026-10-16 22:26:51 INFO Agent starting run with config:
+	run.dataset.train.batch_size: 64
+	run.optimizer.all.lr: 0.0013282116767291217
+	run.optimizer.all.weight_decay: 0.000172925864565445
+2026-10-16 22:26:51 INFO About to run command: /usr/bin/env python main.py --cfg=setup/cfg/resnet50/bioscan1m.yml --run.dataset.train.batch_size=64 --run.optimizer.all.lr=0.0013282116767291217 --run.optimizer.all.weight_decay=0.000172925864565445
+2026-10-16 22:26:56 INFO Running runs: ['9kiigevl']
+2026-10-16 23:21:31 INFO Cleaning up finished run: 9kiigevl
+2026-10-16 23:21:31 INFO Reached EOF.
+2026-10-16 23:21:31 INFO Closing mailbox, abandoning 0 handles.
+2026-10-16 23:21:32 INFO Agent received command: run
+2026-10-16 23:21:32 INFO Agent starting run with config:
+	run.dataset.train.batch_size: 128
+	run.optimizer.all.lr: 1.3906905091091344e-05
+	run.optimizer.all.weight_decay: 0.016389915240785768
+2026-10-16 23:21:32 INFO About to run command: /usr/bin/env python main.py --cfg=setup/cfg/resnet50/bioscan1m.yml --run.dataset.train.batch_size=128 --run.optimizer.all.lr=1.3906905091091344e-05 --run.optimizer.all.weight_decay=0.016389915240785768
+2026-10-16 23:21:37 INFO Running runs: ['0ww9dqme']
+2026-10-16 23:21:42 INFO Cleaning up finished run: 0ww9dqme
+2026-10-16 23:21:42 INFO Reached EOF.
+2026-10-16 23:21:42 INFO Closing mailbox, abandoning 0 handles.
+2026-10-16 23:21:43 INFO Agent received command: run
+2026-10-16 23:21:43 INFO Agent starting run with config:
+	run.dataset.train.batch_size: 128
+	run.optimizer.all.lr: 0.00025346339244459185
+	run.optimizer.all.weight_decay: 0.006633788601948156
+2026-10-16 23:21:43 INFO About to run command: /usr/bin/env python main.py --cfg=setup/cfg/resnet50/bioscan1m.yml --run.dataset.train.batch_size=128 --run.optimizer.all.lr=0.00025346339244459185 --run.optimizer.all.weight_decay=0.006633788601948156
+2026-10-16 23:21:48 INFO Running runs: ['au4d0vfd']
+2026-10-16 23:21:53 INFO Cleaning up finished run: au4d0vfd
+2026-10-16 23:21:53 INFO Reached EOF.
+2026-10-16 23:21:53 INFO Closing mailbox, abandoning 0 handles.
+2026-10-16 23:21:54 INFO Agent received command: run
+2026-10-16 23:21:54 INFO Agent starting run with config:
+	run.dataset.train.batch_size: 64
+	run.optimizer.all.lr: 0.00011125673614225572
+	run.optimizer.all.weight_decay: 0.07201588456274113
+2026-10-16 23:21:54 INFO About to run command: /usr/bin/env python main.py --cfg=setup/cfg/resnet50/bioscan1m.yml --run.dataset.train.batch_size=64 --run.optimizer.all.lr=0.00011125673614225572 --run.optimizer.all.weight_decay=0.07201588456274113
+2026-10-16 23:21:59 INFO Running runs: ['nalorze8']
+2026-10-17 00:16:36 INFO Cleaning up finished run: nalorze8
+2026-10-17 00:16:36 INFO Reached EOF.
+2026-10-17 00:16:36 INFO Closing mailbox, abandoning 0 handles.
+2026-10-17 00:16:37 INFO Agent received command: run
+2026-10-17 00:16:37 INFO Agent starting run with config:
+	run.dataset.train.batch_size: 128
+	run.optimizer.all.lr: 0.0002457622330915424
+	run.optimizer.all.weight_decay: 0.03185646217326246
+2026-10-17 00:16:37 INFO About to run command: /usr/bin/env python main.py --cfg=setup/cfg/resnet50/bioscan1m.yml --run.dataset.train.batch_size=128 --run.optimizer.all.lr=0.0002457622330915424 --run.optimizer.all.weight_decay=0.03185646217326246
+2026-10-17 00:16:42 INFO Running runs: ['sy199zrs']
+2026-10-17 00:16:47 INFO Cleaning up finished run: sy199zrs
+2026-10-17 00:16:47 INFO Reached EOF.
+2026-10-17 00:16:47 INFO Closing mailbox, abandoning 0 handles.
+2026-10-17 00:16:49 INFO Agent received command: run
+2026-10-17 00:16:49 INFO Agent starting run with config:
+	run.dataset.train.batch_size: 64
+	run.optimizer.all.lr: 0.00529935975800161
+	run.optimizer.all.weight_decay: 0.00025248432058901484
+2026-10-17 00:16:49 INFO About to run command: /usr/bin/env python main.py --cfg=setup/cfg/resnet50/bioscan1m.yml --run.dataset.train.batch_size=64 --run.optimizer.all.lr=0.00529935975800161 --run.optimizer.all.weight_decay=0.00025248432058901484
+2026-10-17 00:16:54 INFO Running runs: ['bkl999ib']
+2026-10-17 01:11:23 INFO Cleaning up finished run: bkl999ib
+2026-10-17 01:11:23 INFO Reached EOF.
+2026-10-17 01:11:23 INFO Closing mailbox, abandoning 0 handles.
+2026-10-17 01:11:23 INFO Agent received command: run
+2026-10-17 01:11:23 INFO Agent starting run with config:
+	run.dataset.train.batch_size: 128
+	run.optimizer.all.lr: 1.3906905091091344e-05
+	run.optimizer.all.weight_decay: 0.016389915240785768
+2026-10-17 01:11:23 INFO About to run command: /usr/bin/env python main.py --cfg=setup/cfg/resnet50/bioscan1m.yml --run.dataset.train.batch_size=128 --run.optimizer.all.lr=1.3906905091091344e-05 --run.optimizer.all.weight_decay=0.016389915240785768
+2026-10-17 01:11:29 INFO Running runs: ['0ww9dqme']
+2026-10-17 01:11:34 INFO Cleaning up finished run: 0ww9dqme
+2026-10-17 01:11:34 INFO Reached EOF.
+2026-10-17 01:11:34 INFO Closing mailbox, abandoning 0 handles.
+2026-10-17 01:11:34 INFO Agent received command: run
+2026-10-17 01:11:34 INFO Agent starting run with config:
+	run.dataset.train.batch_size: 128
+	run.optimizer.all.lr: 0.00025346339244459185
+	run.optimizer.all.weight_decay: 0.006633788601948156
+2026-10-17 01:11:34 INFO About to run command: /usr/bin/env python main.py --cfg=setup/cfg/resnet50/bioscan1m.yml --run.dataset.train.batch_size=128 --run.optimizer.all.lr=0.00025346339244459185 --run.optimizer.all.weight_decay=0.006633788601948156
+2026-10-17 01:11:39 INFO Running runs: ['au4d0vfd']
+2026-10-17 01:11:45 INFO Cleaning up finished run: au4d0vfd
+2026-10-17 01:11:45 INFO Reached EOF.
+2026-10-17 01:11:45 INFO Closing mailbox, abandoning 0 handles.
+2026-10-17 01:11:46 INFO Agent received command: run
+2026-10-17 01:11:46 INFO Agent starting run with config:
+	run.dataset.train.batch_size: 128
+	run.optimizer.all.lr: 0.00035272149468577353
+	run.optimizer.all.weight_decay: 0.06597862453702923
+2026-10-17 01:11:46 INFO About to run command: /usr/bin/env python main.py --cfg=setup/cfg/resnet50/bioscan1m.yml --run.dataset.train.batch_size=128 --run.optimizer.all.lr=0.00035272149468577353 --run.optimizer.all.weight_decay=0.06597862453702923
+2026-10-17 01:11:51 INFO Running runs: ['vj75rqu3']
+2026-10-17 01:11:56 INFO Cleaning up finished run: vj75rqu3
+2026-10-17 01:11:56 INFO Reached EOF.
+2026-10-17 01:11:56 INFO Closing mailbox, abandoning 0 handles.
+2026-10-17 01:11:57 INFO Agent received command: run
+2026-10-17 01:11:57 INFO Agent starting run with config:
+	run.dataset.train.batch_size: 128
+	run.optimizer.all.lr: 0.0001835037999283822
+	run.optimizer.all.weight_decay: 0.0008573369923221972
+2026-10-17 01:11:57 INFO About to run command: /usr/bin/env python main.py --cfg=setup/cfg/resnet50/bioscan1m.yml --run.dataset.train.batch_size=128 --run.optimizer.all.lr=0.0001835037999283822 --run.optimizer.all.weight_decay=0.0008573369923221972
+2026-10-17 01:12:02 INFO Running runs: ['bkx7slg7']
+2026-10-17 01:12:07 INFO Cleaning up finished run: bkx7slg7
+2026-10-17 01:12:07 INFO Reached EOF.
+2026-10-17 01:12:07 INFO Closing mailbox, abandoning 0 handles.
+2026-10-17 01:12:08 INFO Agent received command: run
+2026-10-17 01:12:08 INFO Agent starting run with config:
+	run.dataset.train.batch_size: 128
+	run.optimizer.all.lr: 0.007755885532336487
+	run.optimizer.all.weight_decay: 0.025377560783085243
+2026-10-17 01:12:08 INFO About to run command: /usr/bin/env python main.py --cfg=setup/cfg/resnet50/bioscan1m.yml --run.dataset.train.batch_size=128 --run.optimizer.all.lr=0.007755885532336487 --run.optimizer.all.weight_decay=0.025377560783085243
+2026-10-17 01:12:13 INFO Running runs: ['z7oqmor1']
+2026-10-17 01:12:18 INFO Cleaning up finished run: z7oqmor1
+2026-10-17 01:12:18 INFO Reached EOF.
+2026-10-17 01:12:18 INFO Closing mailbox, abandoning 0 handles.
+2026-10-17 01:12:19 INFO Agent received command: run
+2026-10-17 01:12:19 INFO Agent starting run with config:
+	run.dataset.train.batch_size: 128
+	run.optimizer.all.lr: 5.768424408825838e-05
+	run.optimizer.all.weight_decay: 0.0063652133410918525
+2026-10-17 01:12:19 INFO About to run command: /usr/bin/env python main.py --cfg=setup/cfg/resnet50/bioscan1m.yml --run.dataset.train.batch_size=128 --run.optimizer.all.lr=5.768424408825838e-05 --run.optimizer.all.weight_decay=0.0063652133410918525
+2026-10-17 01:12:24 INFO Running runs: ['mfmb18ol']
+2026-10-17 01:12:29 INFO Cleaning up finished run: mfmb18ol
+2026-10-17 01:12:29 INFO Reached EOF.
+2026-10-17 01:12:29 INFO Closing mailbox, abandoning 0 handles.
+2026-10-17 01:12:31 INFO Agent received command: run
+2026-10-17 01:12:31 INFO Agent starting run with config:
+	run.dataset.train.batch_size: 128
+	run.optimizer.all.lr: 0.004072359985747737
+	run.optimizer.all.weight_decay: 0.00015622761564854353
+2026-10-17 01:12:31 INFO About to run command: /usr/bin/env python main.py --cfg=setup/cfg/resnet50/bioscan1m.yml --run.dataset.train.batch_size=128 --run.optimizer.all.lr=0.004072359985747737 --run.optimizer.all.weight_decay=0.00015622761564854353
