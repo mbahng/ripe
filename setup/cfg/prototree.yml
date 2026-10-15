@@ -37,10 +37,10 @@ run:
   last_only_epochs: 5
 
   model:
-    name: "protopnet"
+    name: "prototree"
     checkpoint: ""
-    depth : 6 
-    hdim: 128 
+    depth : 6
+    hdim: 128
     num_classes: 200
 
   loss: 

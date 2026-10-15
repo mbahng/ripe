@@ -19,23 +19,18 @@ class Trainer:
     
     model_name = kwargs["model"]["name"]
 
-    if model_name == "mlp": return super().__new__(SupervisedTrainer) # type: ignore
+    if model_name == "convolutional" or "resnet" in model_name: return super().__new__(SupervisedTrainer) # type: ignore
     elif model_name == "protopnet": return super().__new__(ProtoPNetTrainer) # type: ignore
     elif model_name == "prototree": return super().__new__(ProtoTreeTrainer) # type: ignore
     else: raise NotImplementedError
 
-  def __init__(self, device, dataset, epoch, model, loss, optimizer, **kwargs):
+  def __init__(self, device, model, **kwargs):
     self.device = device
-
-    self.train_dl, self.push_dl, self.val_dl, self.test_dl = src.dataset.init_dataloader(dataset)
 
     self.model = src.model.init_model(model).to(self.device)
     self.model.device = self.device
 
-    self.loss = src.loss.init_loss(loss)
-    self.warm_optimizer, self.joint_optimizer, self.last_optimizer = src.optimizer.init_optimizer(optimizer, self.model)
-
-    self.epoch = epoch 
+    self.epoch = 0
 
     # the metrics to keep track of
     self._metrics = {} 
@@ -44,6 +39,9 @@ class Trainer:
       "val" : deepcopy(self._metrics),
       "test" : deepcopy(self._metrics)
     }
+
+  def run(self, logger) -> None: 
+    raise NotImplementedError
 
   @torch.enable_grad
   def train(self, initial=False) -> Dict: 

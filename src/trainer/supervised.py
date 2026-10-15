@@ -39,6 +39,21 @@ class SupervisedTrainer(Trainer):
 
     # define custom training hyperparameters here 
     # self.hp  = kwargs.get("hp", 1)
+    self.epoch = kwargs["epoch"]
+    self.total_epochs = kwargs["total_epochs"]
+    self.loss = init_loss(kwargs["loss"])
+
+    self.optimizer = init_optimizer(kwargs["optimizer"], self.model)
+
+
+  def run(self, logger): 
+    for epoch in range(self.epoch + 1, self.epoch + self.total_epochs + 1):
+      print(f"Epoch: {epoch}")
+      self.train()
+      self.val()
+
+      pprint(self.metrics)
+      logger.save(self)
 
   @torch.enable_grad
   def train(self, initial=False):
@@ -48,7 +63,7 @@ class SupervisedTrainer(Trainer):
     # Get the original terminal stdout if logger has redirected it
     tqdm_file = getattr(sys.stdout, 'terminal', sys.stdout)
     for batch in tqdm(self.train_dl, leave=False, file=tqdm_file):
-      x, y = batch["x"].to(self.device), batch["y"].to(self.device)
+      x, y = (batch["img"] if "img" in batch else batch["x"]).to(self.device), (batch["label"] if "label" in batch else batch["y"]).to(self.device)
       y_pred = self.model(x)
       loss = self.loss(y_pred, y)
 
@@ -80,7 +95,7 @@ class SupervisedTrainer(Trainer):
     # Get the original terminal stdout if logger has redirected it
     tqdm_file = getattr(sys.stdout, 'terminal', sys.stdout)
     for batch in tqdm(self.val_dl, leave=False, file=tqdm_file):
-      x, y = batch["x"].to(self.device), batch["y"].to(self.device)
+      x, y = (batch["img"] if "img" in batch else batch["x"]).to(self.device), (batch["label"] if "label" in batch else batch["y"]).to(self.device)
       y_pred = self.model(x)
       loss = self.loss(y_pred, y)
       val_metrics["total_loss"] += loss.item()
@@ -105,7 +120,7 @@ class SupervisedTrainer(Trainer):
     # Get the original terminal stdout if logger has redirected it
     tqdm_file = getattr(sys.stdout, 'terminal', sys.stdout)
     for batch in tqdm(self.test_dl, leave=False, file=tqdm_file):
-      x, y = batch["x"].to(self.device), batch["y"].to(self.device)
+      x, y = (batch["img"] if "img" in batch else batch["x"]).to(self.device), (batch["label"] if "label" in batch else batch["y"]).to(self.device)
       y_pred = self.model(x)
       loss = self.loss(y_pred, y)
       test_metrics["total_loss"] += loss.item()
@@ -129,7 +144,7 @@ class SupervisedTrainer(Trainer):
     """
     self.model.eval()
     batch = next(iter(self.val_dl))
-    x, y = batch["x"].to(self.device), batch["y"].to(self.device)
+    x, y = (batch["img"] if "img" in batch else batch["x"]).to(self.device), (batch["label"] if "label" in batch else batch["y"]).to(self.device)
     y_pred = self.model(x)
     pred_labels = y_pred.argmax(dim=1)
 

@@ -5,6 +5,9 @@ n_gpus: 0                         # 0 = cpu, 1 = cuda:0, >1 = multi-gpu setup
 run:
   dataset:
     name: "cub200"                        # name of the dataset
+    rank: "species"                # BIOSCAN only: filter missing ranks and use as labels
+    min_species_samples: 10       # BIOSCAN species filter before splitting
+    oversample: null               # BIOSCAN: balanced train size = X * filtered train size; null disables
     split: [0.6, 0.2, 0.2]          # train/val/test split. If the split is provided, then it ignores this. If there is already a train/test split, then we divide the train set into train/val split according to the ratio of the first two elements of the tuple.
     train:
       subsample: 1.0                # To speed up train runs for initial debugging. Either an int > 1 representing number of samples to truncate from, or float in [0, 1] representing portion of dataset to train on

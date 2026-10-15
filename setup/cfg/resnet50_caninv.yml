@@ -1,0 +1,72 @@
+name: ""                          # run name. If empty, then uses current timestamp
+seed: 0
+n_gpus: 1                         # 0 = cpu, 1 = cuda:0, >1 = multi-gpu setup
+
+run:
+  dataset:
+    name: "canadian_invertebrates"  # locally assembled BOLD export; never downloaded
+    rank: "species"               # taxonomic target; missing labels are excluded
+    min_samples: 10               # count after sequence/image filtering, before splitting
+    allowed_bases: "ACGTN"        # drop reads with alignment gaps or other IUPAC codes
+    group_by: ["sequence", "image"]   # keep a barcode/photo wholly within one split
+    oversample: 1.0               # balanced train size = X * filtered train size; null disables
+    seed: 0                       # reproducible splitting and balancing
+    split: [0.6, 0.2, 0.2]          # label-stratified, group-respecting train/val/test ratios
+    train:
+      subsample: 1.0
+      batch_size: 64
+      num_workers: 4
+      pin_memory: True
+      shuffle: True
+    push:
+      subsample: 1.0
+      batch_size: 64
+      num_workers: 4
+      pin_memory: True
+      shuffle: False
+    val:
+      subsample: 1.0
+      batch_size: 64
+      num_workers: 4
+      pin_memory: True
+    test:
+      subsample: 1.0
+      batch_size: 64
+      num_workers: 4
+      pin_memory: True
+
+  epoch: 0
+  total_epochs: 20
+
+  model:
+    name: "resnet50"
+    checkpoint: ""
+    num_classes: 1959              # species with >=10 ACGTN-only samples
+
+  loss:
+    name: "ce"
+    ce: 1.0
+
+  optimizer:
+    all:
+      name: "adam"
+      checkpoint: ""
+      lr: 1e-3
+      weight_decay: 1e-3
+
+log:
+  savedir: ""                       # dummy, will be overrided by saved/name
+  track:
+    every: 1
+  checkpoint:
+    every: 5
+    model: True
+    optimizer: True
+  diagnose:
+    every: 5
+    weights: True
+    gradients: True
+  wandb:
+    enabled: False
+    entity: "bahngmc-duke-university"
+    project: ""

@@ -63,7 +63,16 @@ def init_dataset(cfg_dataset: dict) -> Dict[str, Dataset]:
     case "inaturalist": 
       print("Loading dataset: iNaturalist")
       datasets = inaturalist(cfg_dataset)
-    case _: 
+    case "bioscan1m" | "bioscan_1m":
+      print("Loading dataset: BIOSCAN-1M")
+      datasets = bioscan1m(cfg_dataset)
+    case "bioscan5m" | "bioscan_5m":
+      print("Loading dataset: BIOSCAN-5M")
+      datasets = bioscan5m(cfg_dataset)
+    case "canadian_invertebrates" | "caninv":
+      print("Loading dataset: Canadian Invertebrates")
+      datasets = canadian_invertebrates(cfg_dataset)
+    case _:
       raise Exception("Not a valid dataset.")
 
   # subsample 

@@ -2,15 +2,24 @@ from typing import Tuple
 import torch.nn as nn
 import torch
 import torch.nn.functional as F
-from .backbone import resnet34_features
+from .resnet import ResNet
 from ..receptive_field import compute_proto_layer_rf_info_v2
 
 class ProtoPNet(nn.Module): 
 
-  def __init__(self, img_size, prototype_shape = (2000, 128, 1, 1), num_classes = 200): 
+  def __init__(self, img_size, backbone: str, prototype_shape = (2000, 128, 1, 1), num_classes = 200): 
     super().__init__()
     self.img_size = img_size
-    self.backbone = resnet34_features(pretrained=True)
+
+    match backbone: 
+      case "resnet34": 
+        self.backbone = resnet34_features(pretrained=True)
+      case "resnet18": 
+        self.backbone = resnet18_features(pretrained=True)
+      case "conv1": 
+        self.backbone = MnistConv()
+      case _: 
+        raise ValueError("Backbone not valid.")
 
     first_add_on_layer_in_channels = [i for i in self.backbone.modules() if isinstance(i, nn.Conv2d)][-1].out_channels
 

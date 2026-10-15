@@ -4,6 +4,20 @@ import torch
 from .scheduler import *
 
 def init_optimizer(cfg_optim: dict, model: nn.Module): 
+  if "all" in cfg_optim: 
+    match cfg_optim["all"]["name"]: 
+      case "adam":
+        optimizer = torch.optim.Adam([
+          {
+            'params': model.parameters(), 
+            'lr': float(cfg_optim["all"]["lr"]), 
+            'weight_decay': float(cfg_optim["all"]["weight_decay"]), 
+          },
+        ])
+      case _: 
+        raise Exception("Optimizer not defined")
+    return optimizer
+
   match cfg_optim["warm"]["name"]: 
     case "adam":
       warm_optimizer = torch.optim.Adam([
@@ -42,22 +56,26 @@ def init_optimizer(cfg_optim: dict, model: nn.Module):
       raise Exception("Optimizer not defined")
 
 
-  match cfg_optim["joint"]["name"]: 
+  match cfg_optim["joint"]["name"]:
     case "adam":
+      if hasattr(model, 'last_layer'):
+        last_layer_params = list(model.last_layer.parameters())
+      else:
+        last_layer_params = [leaf._dist_params for leaf in model.leaves]
       last_layer_optimizer = torch.optim.Adam([
           {
-            'params': model.last_layer.parameters(), 
+            'params': last_layer_params,
             'lr': float(cfg_optim["last_layer"]["lr"])
           }
       ])
-    case _: 
+    case _:
       raise Exception("Optimizer not defined")
 
-  if ckpt_path := cfg_optim["warm"]["checkpoint"]: 
-    last_layer_optimizer.load_state_dict(torch.load(ckpt_path))
+  if ckpt_path := cfg_optim["warm"]["checkpoint"]:
+    warm_optimizer.load_state_dict(torch.load(ckpt_path))
 
-  if ckpt_path := cfg_optim["joint"]["checkpoint"]: 
-    last_layer_optimizer.load_state_dict(torch.load(ckpt_path))
+  if ckpt_path := cfg_optim["joint"]["checkpoint"]:
+    joint_optimizer.load_state_dict(torch.load(ckpt_path))
 
   if ckpt_path := cfg_optim["last_layer"]["checkpoint"]: 
     last_layer_optimizer.load_state_dict(torch.load(ckpt_path))
