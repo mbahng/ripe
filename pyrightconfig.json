@@ -1,0 +1,17 @@
+{
+  "include": [
+    "src",
+    "analysis",
+    "main.py",
+    "make.py"
+  ],
+  "exclude": [
+    "**/__pycache__",
+    "**/.venv",
+    "data",
+    "saved",
+    "profile"
+  ],
+  "venvPath": ".",
+  "venv": ".venv"
+}

@@ -1,0 +1,80 @@
+name: ""
+seed: 0
+n_gpus: 1                         # 0 = cpu, 1 = cuda:0, >1 = multi-gpu setup
+
+run:
+  dataset:
+    name: "bioscan1m"
+    shape: [224, 224]             # what the ImageNet-pretrained resnet50 expects
+    min_samples: 10               # drop labels with fewer rows; changing this or
+                                  # rank changes the class count, so model.num_classes
+                                  # must be updated to match
+    rank: "species"                 # order | family | subfamily | genus | species
+    normalize: True               # ImageNet stats, matching the pretrained weights
+    augmentation:                 # online, train split only. 0 disables a step.
+      crop: 0.8
+      hflip: 0.5                  # plate-mounted specimens: any orientation is valid
+      vflip: 0.5
+      rotation: 180
+      color_jitter: 0.1           # keep mild, pigment is taxonomically informative
+    balance: True                 # balances the labels in the dataset
+    split: [0.6, 0.2, 0.2]
+    train:
+      subsample: 1.0
+      batch_size: 64
+      num_workers: 2
+      pin_memory: True
+      shuffle: True
+    val:
+      subsample: 1.0
+      batch_size: 128
+      num_workers: 2
+      pin_memory: True
+    test:
+      subsample: 1.0
+      batch_size: 128
+      num_workers: 2
+      pin_memory: True
+
+  epoch: 0
+  total_epochs: 50
+
+  model:
+    name: "resnet50"
+    checkpoint: ""
+    num_classes: 1146               # insect orders with >= min_samples rows
+
+  loss:
+    name: "ce"
+    l1: 0.0
+    label_smoothing: 0.0
+
+  optimizer:
+    name: "sgd"
+    checkpoint: ""
+    lr: 1e-5                      # CrossEntropy reduces by sum, so the gradient
+                                  # scales with batch_size: equivalent to 6.4e-4
+                                  # under mean reduction at batch_size 64.
+    momentum: 0.9
+    betas: [0.9, 0.999]
+    weight_decay: 0.0
+
+log:
+  savedir: ""
+  track:
+    every: 1
+  checkpoint:
+    every: 1
+    model: True
+    optimizer: True
+  diagnose:
+    every: 1
+    save_local: True
+
+    weights: True
+    gradients: True
+    sample: True
+  wandb:
+    enabled: False
+    entity: "bahngmc-duke-university"
+    project: "ripe"

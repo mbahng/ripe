@@ -5,22 +5,32 @@ n_gpus: 0                         # 0 = cpu, 1 = cuda:0, >1 = multi-gpu setup
 run:
   dataset:
     name: "cub200"                        # name of the dataset
+    shape: [224, 224]               # (height, width) every input image is resized to
+    augmentation:                   # online, applied to the train split only; val/test/push stay
+      hflip: 0.5                    # deterministic. Each dataset module defines its own
+      crop: 0.8                     # augmentations() with the knobs that are label-preserving
+      rotation: 10                  # for that data, so the valid keys here are per-dataset.
+      color_jitter: 0.2             # A falsey value disables one step without removing the key.
+    balance: False                  # balances the labels in the dataset: the train split is resampled
+                                    # so every label is equally represented, rare labels oversampled
+                                    # and common ones undersampled, keeping the split size. val/test
+                                    # keep the real frequencies. Only bioscan/caninv honor this.
     split: [0.6, 0.2, 0.2]          # train/val/test split. If the split is provided, then it ignores this. If there is already a train/test split, then we divide the train set into train/val split according to the ratio of the first two elements of the tuple.
     train:
       subsample: 1.0                # To speed up train runs for initial debugging. Either an int > 1 representing number of samples to truncate from, or float in [0, 1] representing portion of dataset to train on
       batch_size: 32
-      num_workers: 1
+      num_workers: 2
       pin_memory: True
       shuffle: True
     val:
       subsample: 1.0
       batch_size: 32
-      num_workers: 1
+      num_workers: 2
       pin_memory: True
     test:
       subsample: 1.0
       batch_size: 32
-      num_workers: 1
+      num_workers: 2
       pin_memory: True
 
   epoch: 0
@@ -34,6 +44,7 @@ run:
   loss:
     name: ""
     l1: 0.0                         # l1 loss, added directly to weights of model
+    label_smoothing: 0.0
     # add hyperparameters here
 
   optimizer:

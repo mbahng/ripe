@@ -1,0 +1,31 @@
+name: resnet18_bioscan1m
+base_config: setup/cfg/resnet18_bioscan1m.yml
+entity: "bahngmc-duke-university"
+project: "ripe"
+
+method: bayes
+metric:
+  name: val.accuracy
+  goal: maximize
+
+parameters:
+  # CrossEntropy reduces by sum, so the gradient scales with batch_size. At the
+  # config's train batch_size of 64 this range is equivalent to 6.4e-4 .. 2.6e-2
+  # under mean reduction. Halve both bounds if train batch_size goes to 128.
+  run.optimizer.lr:
+    distribution: log_uniform_values
+    min: 1.0e-5
+    max: 4.0e-2
+  run.optimizer.momentum:
+    values: [0.0, 0.5, 0.9, 0.95, 0.99]
+  run.optimizer.weight_decay:
+    values: [0.0, 1.0e-5, 1.0e-4, 1.0e-3, 1.0e-2, 1.0e-1]
+
+  # hflip/vflip stay fixed at 0.5: specimens are plate-mounted at arbitrary
+  # orientation, so those are label-preserving regardless of the other settings.
+  run.dataset.augmentation.crop:
+    values: [0.6, 0.8, 1.0]
+  run.dataset.augmentation.rotation:
+    values: [0, 90, 180]
+  run.dataset.augmentation.color_jitter:
+    values: [0.0, 0.1, 0.3]
