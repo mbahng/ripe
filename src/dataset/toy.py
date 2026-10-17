@@ -1,9 +1,25 @@
 import torch
 import math
-from torch.utils.data import TensorDataset
+from typing import Callable, Dict, Tuple
+from torch.utils.data import TensorDataset, Dataset
 from sklearn.datasets import make_s_curve, make_moons, make_circles
 
-def two_gaussians(dataset_cfg: dict):
+__all__ = ["two_gaussians", "four_gaussians", "moons", "circles", "s_curve"]
+
+def collate(batch) -> Dict[str, torch.Tensor]:
+  """Collate single-tensor samples into {"x": (B, D)}.
+
+  The toy distributions are unlabeled: every factory below wraps points in a
+  one-element ``TensorDataset``, so each sample arrives as a ``(point,)``
+  tuple and no "y" key is produced.
+  """
+  return {"x": torch.stack([point for (point,) in batch])}
+
+def _split(ds, dataset_cfg: dict) -> Dict[str, Dataset]:
+  train_ds, val_ds, test_ds = torch.utils.data.random_split(ds, dataset_cfg["split"])
+  return {"train": train_ds, "val": val_ds, "test": test_ds}
+
+def two_gaussians(dataset_cfg: dict) -> Tuple[Dict[str, Dataset], Callable]:
   N = 10000
   variance = 0.8
   gaussian1 = 4 + math.sqrt(variance) * torch.randn(N, 2)
@@ -11,10 +27,9 @@ def two_gaussians(dataset_cfg: dict):
   mask = (torch.rand(N) > 0.5).unsqueeze(1).expand(N, 2)
   Y = mask * gaussian1 + (~mask) * gaussian2
   ds = TensorDataset(Y)
-  train_ds, val_ds, test_ds = torch.utils.data.random_split(ds, dataset_cfg["split"])
-  return train_ds, val_ds, test_ds
+  return _split(ds, dataset_cfg), collate
 
-def four_gaussians(dataset_cfg: dict):
+def four_gaussians(dataset_cfg: dict) -> Tuple[Dict[str, Dataset], Callable]:
   """
   Toy dataset with 4 Gaussian components arranged in a ring pattern
   """
@@ -41,10 +56,9 @@ def four_gaussians(dataset_cfg: dict):
   Y = Y[perm]
 
   ds = TensorDataset(Y)
-  train_ds, val_ds, test_ds = torch.utils.data.random_split(ds, dataset_cfg["split"])
-  return train_ds, val_ds, test_ds
+  return _split(ds, dataset_cfg), collate
 
-def moons(dataset_cfg: dict):
+def moons(dataset_cfg: dict) -> Tuple[Dict[str, Dataset], Callable]:
   """
   Toy dataset consisting of two cresent moons
   """
@@ -53,11 +67,10 @@ def moons(dataset_cfg: dict):
   Y, _ = make_moons(N, noise=noise)
   Y = torch.tensor(4 * Y, dtype=torch.float)
   ds = TensorDataset(Y)
-  train_ds, val_ds, test_ds = torch.utils.data.random_split(ds, dataset_cfg["split"])
-  return train_ds, val_ds, test_ds
+  return _split(ds, dataset_cfg), collate
 
 
-def circles(dataset_cfg: dict):
+def circles(dataset_cfg: dict) -> Tuple[Dict[str, Dataset], Callable]:
   """
   Toy dataset consisting of two concentric circles.
   Factor = scale between inner vs outer circle.
@@ -68,14 +81,12 @@ def circles(dataset_cfg: dict):
   Y, _ = make_circles(N, factor=scale, noise=noise)
   Y = torch.tensor(4 * Y, dtype=torch.float)
   ds = TensorDataset(Y)
-  train_ds, val_ds, test_ds = torch.utils.data.random_split(ds, dataset_cfg["split"])
-  return train_ds, val_ds, test_ds
+  return _split(ds, dataset_cfg), collate
 
-def s_curve(dataset_cfg: dict):
+def s_curve(dataset_cfg: dict) -> Tuple[Dict[str, Dataset], Callable]:
   N = 100
   noise=0.05
   Y, _ = make_s_curve(N, noise=noise)
   Y = torch.tensor(4 * Y, dtype=torch.float)
   ds = TensorDataset(Y)
-  train_ds, val_ds, test_ds = torch.utils.data.random_split(ds, dataset_cfg["split"])
-  return train_ds, val_ds, test_ds
+  return _split(ds, dataset_cfg), collate

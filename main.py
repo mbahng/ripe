@@ -10,14 +10,21 @@ def main(cfg: Config):
   Main script for nondistributed training
   """
   device = 0 if cfg["n_gpus"] == 1 else None
-  trainer = Trainer(**cfg["run"], device=device)
+  logger = Logger(cfg, device=device)
+
+  run = dict(cfg["run"])
+  trainer = Trainer(device=device,
+                    dataset_cfg=run.pop("dataset"),
+                    model_cfg=run.pop("model"),
+                    loss_cfg=run.pop("loss"),
+                    optimizer_cfg=run.pop("optimizer"),
+                    **run)
 
   # then run initial epoch to validate that everything runs.
   trainer.train(initial=True)
   trainer.val() 
 
   # then initialize logger, create directory, save config, and save epoch 0 metrics
-  logger = Logger(cfg, device=device)
   pprint(trainer.metrics)
   logger.save(trainer)
 

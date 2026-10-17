@@ -116,7 +116,14 @@ class Logger:
     with open(os.path.join(epoch_save_dir, "metrics.json"), 'w') as f:
       json.dump(trainer.metrics, f, indent=2)
     if self.wandb_enabled and self.wandb_logger is not None:
-      self.wandb_logger.log(trainer.metrics, step=trainer.epoch)
+      # Flatten to "<split>.<metric>" rather than logging the nested dict: the
+      # client preserves nesting, and a sweep's metric.name has to match a
+      # single unambiguous key. This is what sweep.py targets.
+      self.wandb_logger.log(
+          {f"{split}.{name}": value
+           for split, metrics in trainer.metrics.items()
+           for name, value in metrics.items()},
+          step=trainer.epoch)
       
     model = trainer.model.module if isinstance(trainer.model, DDP) else trainer.model 
 
@@ -148,9 +155,9 @@ class Logger:
         if hasattr(trainer, "predict_batch"):
           fig = trainer.predict_batch() # type: ignore
           if self.wandb_logger:
-            self.wandb_logger.log({f"sample_digits": wandb.Image(fig)}, step=trainer.epoch) 
+            self.wandb_logger.log({f"Batch Prediction": wandb.Image(fig)}, step=trainer.epoch) 
           
           if save_local:
-            fig.savefig(os.path.join(epoch_save_dir, "sample_digits.png"))
+            fig.savefig(os.path.join(epoch_save_dir, "batch_prediction.png"))
           
           plt.close(fig)

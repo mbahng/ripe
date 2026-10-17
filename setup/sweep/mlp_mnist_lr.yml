@@ -1,0 +1,23 @@
+name: mlp_mnist_lr              # sweep name; also the subdirectory trial configs land in
+base_config: setup/cfg/mlp_mnist.yml   # every trial starts from this config
+entity: "bahngmc-duke-university"
+project: "ripe"
+
+method: bayes                   # grid | random | bayes
+metric:
+  name: val.accuracy            # wandb flattens the nested metrics dict with a dot,
+  goal: maximize                # so trainer.metrics["val"]["accuracy"] logs as val.accuracy
+
+parameters:                     # keys are dot paths into the trial config
+  run.optimizer.lr:
+    distribution: log_uniform_values
+    min: 1.0e-5
+    max: 1.0e-2
+  run.optimizer.momentum:
+    values: [0.0, 0.9]
+  run.dataset.augmentation.rotation:
+    values: [0, 10, 20]
+
+early_terminate:                # optional: stop trials that are clearly losing
+  type: hyperband
+  min_iter: 3

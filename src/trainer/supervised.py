@@ -12,14 +12,30 @@ from pprint import pprint
 from ..optimizer import init_optimizer
 from ..loss import init_loss
 from ..dataset import init_dataloader
+from ..model import init_model 
 
 class SupervisedTrainer(Trainer):
   """Trainer implementation for supervised models (MLP, CNN, etc.)"""
 
   model: torch.nn.Module
 
-  def __init__(self, *args, **kwargs):
-    super().__init__(*args, **kwargs)
+  def __init__(self, device, dataset_cfg, model_cfg, loss_cfg, optimizer_cfg, epoch, **kwargs):
+    super().__init__(device, dataset_cfg, model_cfg, loss_cfg, optimizer_cfg, epoch, **kwargs)
+
+    self.device = device
+
+    dls = init_dataloader(dataset_cfg)
+    self.train_dl, self.val_dl, self.test_dl = dls["train"], dls["val"], dls["test"]
+
+    self.model = init_model(model_cfg).to(self.device)
+    self.model.device = self.device
+
+    self.loss = init_loss(loss_cfg)
+    self.optimizer = init_optimizer(optimizer_cfg, self.model)
+
+    self.epoch = epoch 
+    self.total_epochs = kwargs["total_epochs"]
+
     # the metrics to keep track of
     self._metrics = {
       "total_loss" : 0.0,
@@ -34,11 +50,17 @@ class SupervisedTrainer(Trainer):
       "val" : deepcopy(self._metrics),
     }
 
-    dl_dict = init_dataloader(kwargs["dataset"]) 
-    self.train_dl, self.val_dl, self.test_dl = dl_dict["train"], dl_dict["val"], dl_dict["test"]
-
     # define custom training hyperparameters here 
     # self.hp  = kwargs.get("hp", 1)
+
+  def run(self, logger): 
+    for epoch in range(self.epoch  + 1, self.total_epochs):
+      print(f"Epoch: {epoch}")
+      self.train()
+      self.val()
+
+      pprint(self.metrics)
+      logger.save(self)
 
   @torch.enable_grad
   def train(self, initial=False):
@@ -125,7 +147,8 @@ class SupervisedTrainer(Trainer):
   @torch.no_grad
   def predict_batch(self):
     """
-    Plot the actual samples, predictions, and true labels.   
+    Plot the actual samples, predictions, and true labels. 
+    Just for sanity checks so that we can see the predictions on a small batch. 
     """
     self.model.eval()
     batch = next(iter(self.val_dl))

@@ -1,0 +1,89 @@
+log:
+  checkpoint:
+    every: 5
+    model: true
+    optimizer: true
+  diagnose:
+    every: 1
+    gradients: true
+    predict_batch: true
+    save_local: true
+    weights: true
+  savedir: ''
+  track:
+    every: 1
+  wandb:
+    enabled: true
+    entity: bahngmc-duke-university
+    project: ripe
+n_gpus: 0
+name: coop_test_c1
+run:
+  dataset:
+    augmentation:
+      rotation: 10
+      scale: 0.1
+      shear: 5
+      translate: 0.1
+    name: mnist
+    shape:
+    - 28
+    - 28
+    split:
+    - 0.6
+    - 0.2
+    - 0.2
+    test:
+      batch_size: 32
+      num_workers: 1
+      pin_memory: true
+      subsample: 0.2
+    train:
+      batch_size: 32
+      num_workers: 1
+      pin_memory: true
+      shuffle: true
+      subsample: 0.2
+    val:
+      batch_size: 32
+      num_workers: 1
+      pin_memory: true
+      subsample: 0.2
+  epoch: 0
+  loss:
+    l1: 0.0
+    label_smoothing: 0.01
+    name: ce
+  model:
+    activations:
+    - relu
+    - leaky_relu
+    - relu
+    - relu
+    - relu
+    checkpoint: ''
+    dimensions:
+    - 784
+    - 512
+    - 256
+    - 128
+    - 64
+    - 10
+    name: mlp
+    normalizations:
+    - true
+    - false
+    - true
+    - false
+    - true
+  optimizer:
+    betas:
+    - 0.9
+    - 0.999
+    checkpoint: ''
+    lr: 0.01
+    momentum: 0.0
+    name: sgd
+    weight_decay: 0.0
+  total_epochs: 200
+seed: 0

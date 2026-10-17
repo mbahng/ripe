@@ -1,4 +1,5 @@
 import torch
+from typing import Callable, Dict, Tuple
 from torch.utils.data import Dataset
 import os
 
@@ -36,7 +37,16 @@ class TextDataset(Dataset):
     y = torch.tensor(self.data[idx + 1:idx + 1 + self.block_size], dtype=torch.long)
     return x, y
 
-def shakespeare(dataset_cfg: dict):
+def collate(batch) -> Dict[str, torch.Tensor]:
+  """Collate (context, next-token) pairs into {"x": (B, T), "y": (B, T)}.
+
+  Both halves are block_size-long token-id sequences, so they stack directly;
+  "y" is "x" shifted one position, not a scalar class index.
+  """
+  contexts, targets = zip(*batch)
+  return {"x": torch.stack(contexts), "y": torch.stack(targets)}
+
+def shakespeare(dataset_cfg: dict) -> Tuple[Dict[str, Dataset], Callable]:
   block_size = dataset_cfg["block_size"] 
   if not os.path.exists("data/shakespeare.txt"): 
     os.makedirs("data", exist_ok=True) 
@@ -53,7 +63,7 @@ def shakespeare(dataset_cfg: dict):
   # Split
   train_split, val_split, test_split = dataset_cfg["split"]
   total_split = train_split + val_split + test_split
-  train_split, val_split, test_split = train_split / total_split, val_split / total_split, test_split / test_split
+  train_split, val_split, test_split = train_split / total_split, val_split / total_split, test_split / total_split
   
   train_end_idx = int(len(tokens) * train_split) 
   val_end_idx = int(len(tokens) * (train_split + val_split))
@@ -67,4 +77,4 @@ def shakespeare(dataset_cfg: dict):
   val_ds = TextDataset(val_tokens, block_size, vocab_size, stoi, itos)
   test_ds = TextDataset(test_tokens, block_size, vocab_size, stoi, itos)
 
-  return train_ds, val_ds, test_ds
+  return {"train": train_ds, "val": val_ds, "test": test_ds}, collate

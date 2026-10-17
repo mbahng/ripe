@@ -18,8 +18,75 @@
 
    Run example script to train MLP on MNIST. 
    ```
-   python main.py --cfg=setup/cfg/example_mlp.yml
+   python main.py --cfg=setup/cfg/mlp_mnist.yml
    ```
+
+# Hyperparameter Sweeps
+
+   `sweep.py` drives [W&B sweeps](https://docs.wandb.ai/guides/sweeps). `main.py` deliberately takes only `--cfg`, so rather than passing sampled hyperparameters as arguments, each trial gets its own generated config file. A sweep spec names a base config and a search space over dot paths into it: 
+   ```
+   name: mlp_mnist_lr              # sweep name; also the subdirectory trial configs land in
+   base_config: setup/cfg/mlp_mnist.yml
+   entity: "your-entity"
+   project: "ripe"
+
+   method: bayes                   # grid | random | bayes
+   metric:
+     name: val.accuracy            # see the note on metric names below
+     goal: maximize
+
+   parameters:                     # keys are dot paths into the trial config
+     run.optimizer.lr:
+       distribution: log_uniform_values
+       min: 1.0e-5
+       max: 1.0e-2
+     run.dataset.augmentation.rotation:
+       values: [0, 10, 20]
+   ```
+   Put it in `setup/sweep/`, then create the sweep and run an agent in one go. You do not need the `wandb sweep` / `wandb agent` CLI; `sweep.py` calls the Python equivalents. 
+   ```
+   # create the sweep and run 10 trials
+   python sweep.py --cfg setup/sweep/mlp_mnist_lr.yml --count 10
+
+   # create it and print the id, without running anything
+   python sweep.py --cfg setup/sweep/mlp_mnist_lr.yml
+
+   # add another agent to an existing sweep (another terminal, or another machine)
+   python sweep.py --cfg setup/sweep/mlp_mnist_lr.yml --id <sweep id> --count 10
+   ```
+   Trials run sequentially within one agent, so launch several agents against the same `--id` to parallelize.
+
+## Time budgets
+
+   Two flags bound a sweep by wall clock, both in fractional hours. W&B itself only caps the *number* of runs (`run_cap`), so these are enforced locally. 
+   ```
+   python sweep.py --cfg setup/sweep/resnet50_bioscan1m.yml --count 10 --trialtime 2
+   ```
+   - `--trialtime` stops each trial after N hours. The trial is sent SIGINT (then SIGKILL after a 60s grace period), so wandb still finalizes the run. Because `logger.save` writes metrics every epoch, every completed epoch survives; only the partial epoch is lost. A stopped trial reports success, so the agent keeps going.
+   - `--walltime` stops the whole sweep after N hours. It is checked *between* trials, so the last trial can overrun by its own length — pair it with `--trialtime` to bound that.
+
+   Either flag on its own is enough to start an agent; with `--count` as well, whichever limit is reached first wins.
+
+## Notes
+
+   - **Metric names are flattened.** `trainer.metrics` is nested as `{"train": {...}, "val": {...}}`, but the wandb client preserves nesting rather than producing a single addressable key, so `Logger.save` flattens it to `train.accuracy`, `val.accuracy`, and so on. Your sweep's `metric.name` must match one of those flat keys.
+   - **Trials always log to wandb.** `sweep.py` forces `log.wandb.enabled: True` and overwrites `entity`/`project` from the spec, since a sweep with no reported metric has nothing to optimize. `wandb login` must have been run.
+   - **Where things land.** Everything a sweep produces is grouped under one directory, named for the wandb sweep id. Each trial is an ordinary run directory inside it, named for its wandb run id, so a run can be cross-referenced with the W&B UI by name.
+   ```
+   saved/sweep-<sweep id>/
+     sweep.yml              copy of the spec this sweep was created from
+     base.yml               copy of the base config it starts every trial from
+     8cs782t4/              one per trial, laid out like any other run
+       cfg.yml                this trial's resolved config
+       stdout.txt
+       0000/ 0001/ ...        metrics.json and checkpoints per epoch
+       wandb/
+     k2j9x1pq/
+       ...
+   ```
+   A manual `--trial` invocation has no sweep id, so it falls back to `saved/sweep-<spec name>/` and still groups rather than scattering.
+   - **Watch coupled parameters.** Do not sweep anything that another field has to agree with — `run.dataset.shape` must match `model.in_size`, and `run.dataset.rank` / `min_samples` change the class count that `model.num_classes` (or `dimensions[-1]`) encodes. Nothing validates this, so the run will fail partway in.
+   - **Losses reduce by sum.** `CrossEntropy` uses `reduction='sum'`, so the gradient scales with batch size and a learning-rate range is only meaningful for a fixed `batch_size`. Rescale the range if you change it.
 
 # Some Design Choices
 

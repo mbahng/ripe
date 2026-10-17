@@ -1,0 +1,8 @@
+wandb_version: 1
+
+run.dataset.augmentation.rotation:
+  value: 0
+run.optimizer.lr:
+  value: 0.00255709160441557
+run.optimizer.momentum:
+  value: 0.9

@@ -1,6 +1,5 @@
 import torch
 from typing import Dict
-import src
 from copy import deepcopy
 
 class Trainer: 
@@ -15,41 +14,39 @@ class Trainer:
     # Import inside method to avoid circular import
     from .supervised import SupervisedTrainer 
     
-    model_name = kwargs["model"]["name"]
+    model_name = kwargs["model_cfg"]["name"]
 
-    if model_name == "mlp": return super().__new__(SupervisedTrainer) # type: ignore
+    if model_name in ("mlp", "cnn") or model_name.startswith("resnet"):
+      return super().__new__(SupervisedTrainer) # type: ignore
     else: raise NotImplementedError
 
-  def __init__(self, device, dataset, epoch, total_epochs, model, loss, optimizer, **kwargs):
-    self.device = device
+  def __init__(self, device, dataset_cfg, model_cfg, loss_cfg, optimizer_cfg, epoch, **kwargs):
 
-    self.train_dl, self.val_dl, self.test_dl = src.dataset.init_dataloader(dataset)
-
-    self.model = src.model.init_model(model).to(self.device)
-    self.model.device = self.device
-
-    self.loss = src.loss.init_loss(loss)
-    self.optimizer = src.optimizer.init_optimizer(optimizer, self.model)
-
-    self.epoch = epoch 
-    self.total_epochs = total_epochs
+    self.device = None 
+    self.train_dl, self.val_dl, self.test_dl = None, None, None
+    self.model = None  
+    self.loss = None 
+    self.optimizer = None 
+    self.epoch = None 
 
     # the metrics to keep track of
     self._metrics = {} 
     self.metrics = {
       "train" : deepcopy(self._metrics),
       "val" : deepcopy(self._metrics),
-      "test" : deepcopy(self._metrics)
     }
+
+  def run(self, logger) -> None:
+    ... 
 
   @torch.enable_grad
   def train(self, initial=False) -> Dict: 
-    raise NotImplementedError
+    ...
 
   @torch.no_grad
   def val(self) -> Dict:
-    raise NotImplementedError
+    ...
 
   @torch.no_grad
   def test(self) -> Dict: 
-    raise NotImplementedError
+    ...

@@ -1,0 +1,89 @@
+name: mlp_mnist_lr_kl14oxkp
+seed: 0
+n_gpus: 0
+run:
+  dataset:
+    name: mnist
+    shape:
+    - 28
+    - 28
+    augmentation:
+      rotation: 20
+      translate: 0.1
+      scale: 0.1
+      shear: 5
+    split:
+    - 0.6
+    - 0.2
+    - 0.2
+    train:
+      subsample: 1.0
+      batch_size: 32
+      num_workers: 1
+      pin_memory: true
+      shuffle: true
+    val:
+      subsample: 1.0
+      batch_size: 32
+      num_workers: 1
+      pin_memory: true
+    test:
+      subsample: 1.0
+      batch_size: 32
+      num_workers: 1
+      pin_memory: true
+  epoch: 0
+  total_epochs: 10
+  model:
+    name: mlp
+    checkpoint: ''
+    dimensions:
+    - 784
+    - 512
+    - 256
+    - 128
+    - 64
+    - 10
+    normalizations:
+    - true
+    - false
+    - true
+    - false
+    - true
+    activations:
+    - relu
+    - leaky_relu
+    - relu
+    - relu
+    - relu
+  loss:
+    name: ce
+    l1: 0.0
+    label_smoothing: 0.01
+  optimizer:
+    name: sgd
+    checkpoint: ''
+    lr: 0.0002839223706942538
+    momentum: 0
+    betas:
+    - 0.9
+    - 0.999
+    weight_decay: 0.0
+log:
+  savedir: ''
+  track:
+    every: 1
+  checkpoint:
+    every: 1
+    model: true
+    optimizer: true
+  diagnose:
+    every: 1
+    save_local: true
+    weights: true
+    gradients: true
+    predict_batch: true
+  wandb:
+    enabled: true
+    entity: bahngmc-duke-university
+    project: ripe

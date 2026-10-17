@@ -1,0 +1,85 @@
+name: ""                          # run name. If empty, then uses current timestamp
+seed: 0
+n_gpus: 0                         # 0 = cpu, 1 = cuda:0, >1 = multi-gpu setup
+
+run:
+  dataset:
+    name: "cifar10"
+    shape: [32, 32]               # must match model.in_size
+    augmentation:                 # online, train split only. 0 disables a step.
+      hflip: 0.0                  # probability
+      translate: 0.0              # max shift, as a fraction of width/height
+      scale: 0.0                  # zoom, +/- this fraction
+      rotation: 0                 # degrees
+      color_jitter: 0.0           # brightness/contrast/saturation strength
+    split: [0.6, 0.2, 0.2]        # CIFAR10 ships train/test, so only the first
+                                  # two weights are used, to carve val out of
+                                  # train (stratified by class).
+    train:
+      subsample: 1.0
+      batch_size: 128
+      num_workers: 4
+      pin_memory: True
+      shuffle: True
+    val:
+      subsample: 1.0
+      batch_size: 128
+      num_workers: 4
+      pin_memory: True
+    test:
+      subsample: 1.0
+      batch_size: 128
+      num_workers: 4
+      pin_memory: True
+
+  epoch: 0
+  total_epochs: 20
+
+  model:
+    name: "cnn"
+    checkpoint: ""
+    in_channels: 3                # CIFAR10 is 3x32x32
+    in_size: 32
+    channels: [32, 64]            # one entry per conv block; two blocks is shallow
+    kernel_sizes: [3, 3]
+    normalizations: [True, True]
+    activations: ["relu", "relu"]
+    pools: [2, 2]                 # 32 -> 16 -> 8, so the head sees 64*8*8
+    dimensions: [256, 10]         # head widths, ending in the class count
+    dropout: 0.0
+
+  loss:
+    name: "ce"
+    l1: 0.0
+    label_smoothing: 0.0
+
+  optimizer:
+    name: "sgd"
+    checkpoint: ""
+    lr: 1e-4                      # CrossEntropy reduces by sum, so the gradient
+                                  # scales with batch_size: this is equivalent
+                                  # to lr 1.28e-2 under mean reduction at
+                                  # batch_size 128. Rescale if you change it.
+    momentum: 0.9
+    betas: [0.9, 0.999]
+    weight_decay: 0.0
+
+log:
+  savedir: ""
+  track:
+    every: 1
+  checkpoint:
+    every: 5
+    model: True
+    optimizer: True
+  diagnose:
+    every: 1
+    save_local: True
+
+    weights: True
+    gradients: True
+    sample: True
+  wandb:
+    enabled: False
+    entity: ""
+    project: ""

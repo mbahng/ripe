@@ -1,0 +1,90 @@
+name: ""
+seed: 0
+n_gpus: 0
+
+run:
+  dataset:
+    name: "bioscan1m"
+    shape: [64, 64]               # must match model.in_size
+    min_samples: 10               # drop labels with fewer rows than this; a class
+                                  # smaller than a handful cannot be split into
+                                  # meaningful train/val/test shares. Changing it
+                                  # changes the class count, so model.dimensions[-1]
+                                  # must be updated to match.
+    rank: "order"                 # order | family | subfamily | genus | species
+    normalize: True
+    augmentation:                 # online, train split only. 0 disables a step.
+      crop: 0.8                   # min area scale of the random resized crop
+      hflip: 0.5                  # plate-mounted specimens: any orientation is valid
+      vflip: 0.5
+      rotation: 180
+      color_jitter: 0.1           # keep mild, pigment is taxonomically informative
+    balance: True                 # balances the labels in the dataset
+    split: [0.6, 0.2, 0.2]        # label-stratified; BIOSCAN's own partitions are unused
+    train:
+      subsample: 1.0
+      batch_size: 128
+      num_workers: 4
+      pin_memory: True
+      shuffle: True
+    val:
+      subsample: 1.0
+      batch_size: 128
+      num_workers: 4
+      pin_memory: True
+    test:
+      subsample: 1.0
+      batch_size: 128
+      num_workers: 4
+      pin_memory: True
+
+  epoch: 0
+  total_epochs: 20
+
+  model:
+    name: "cnn"
+    checkpoint: ""
+    in_channels: 3
+    in_size: 64
+    channels: [32, 64, 128]
+    kernel_sizes: [3, 3, 3]
+    normalizations: [True, True, True]
+    activations: ["relu", "relu", "relu"]
+    pools: [2, 2, 2]              # 64 -> 32 -> 16 -> 8
+    dimensions: [256, 15]         # 15 = insect orders with >= min_samples rows
+    dropout: 0.0
+
+  loss:
+    name: "ce"
+    l1: 0.0
+    label_smoothing: 0.0
+
+  optimizer:
+    name: "sgd"
+    checkpoint: ""
+    lr: 1e-4                      # CrossEntropy reduces by sum, so the gradient
+                                  # scales with batch_size: equivalent to 1.28e-2
+                                  # under mean reduction at batch_size 128.
+    momentum: 0.9
+    betas: [0.9, 0.999]
+    weight_decay: 0.0
+
+log:
+  savedir: ""
+  track:
+    every: 1
+  checkpoint:
+    every: 5
+    model: True
+    optimizer: True
+  diagnose:
+    every: 1
+    save_local: True
+
+    weights: True
+    gradients: True
+    sample: True
+  wandb:
+    enabled: False
+    entity: ""
+    project: ""
