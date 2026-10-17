@@ -11,6 +11,13 @@ run:
     split_strategy: "stratified"
     seed: 0                       # reproducible splitting and balancing
     split: [0.6, 0.2, 0.2]          # species-stratified train/val/test ratios
+    augmentation:
+      hflip: 0.5
+      vflip: 0.5
+      rotation: 180
+      crop: [0.6, 1.0]
+      color_jitter: 0.2
+
     train: 
       subsample: 1.0
       batch_size: 64

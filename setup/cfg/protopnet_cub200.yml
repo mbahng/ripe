@@ -1,95 +1,95 @@
-name: ""                          # run name. If empty, then uses current timestamp
+name: protopnet_cub200_v1
 seed: 0
-n_gpus: 1                         # 0 = cpu, 1 = cuda:0, >1 = multi-gpu setup
-
-run: 
-  dataset: 
-    name: "cub200"                        # name of the dataset
-    split: [0.6, 0.2, 0.2]          # train/val/test split. If the split is provided, then it ignores this. If there is already a train/test split, then we divide the train set into train/val split according to the ratio of the first two elements of the tuple. 
-    train: 
+n_gpus: 1
+run:
+  dataset:
+    name: cub200
+    split:
+    - 0.6
+    - 0.2
+    - 0.2
+    train:
       subsample: 1.0
       batch_size: 32
-      num_workers: 0
-      pin_memory: False 
-      shuffle: True
-      # augmentation: []              # potential augmentation 
-    push: 
-      subsample: 1.0 
-      batch_size: 32
-      num_workers: 0
-      pin_memory: False 
-      shuffle: False 
-    val: 
+      num_workers: 4
+      pin_memory: true
+      shuffle: true
+    push:
       subsample: 1.0
       batch_size: 32
-      num_workers: 0
-      pin_memory: False 
-    test: 
+      num_workers: 4
+      pin_memory: true
+      shuffle: false
+    val:
       subsample: 1.0
       batch_size: 32
-      num_workers: 0
-      pin_memory: False 
-
+      num_workers: 4
+      pin_memory: true
+    test:
+      subsample: 1.0
+      batch_size: 32
+      num_workers: 4
+      pin_memory: true
   epoch: 0
-  warm_epochs: 5
-  joint_epochs: 100 
-  push_every: 10
-  last_only_epochs: 5
-
+  warm_epochs: 3
+  joint_epochs: 30
+  push_every: 6
+  last_only_epochs: 3
   model:
-    name: "protopnet"
-    checkpoint: ""
+    name: protopnet
+    checkpoint: ''
+    backbone: resnet34
     img_size: 224
-    prototype_shape: [2000, 128, 1, 1] 
+    prototype_shape:
+    - 2000
+    - 128
+    - 1
+    - 1
     num_classes: 200
-
-  loss: 
-    name: "ce"
-    ce: 1.0 
+  loss:
+    name: ce
+    ce: 1.0
     cluster: 0.8
     separation: -0.08
-    l1: 1e-4
-
-  optimizer: 
-    warm: 
-      name: "adam"
-      checkpoint: ""
-      addon: 
-        lr: 3e-3 
-        weight_decay: 1e-3
-      prototype: 
-        lr: 3e-3
-    joint: 
-      name: "adam"
-      checkpoint: "" 
-      backbone: 
-        lr: 1e-4 
-        weight_decay: 1e-3
-      addon: 
-        lr: 3e-3 
-        weight_decay: 1e-3
-      prototype: 
-        lr: 3e-3
-    last_layer: 
-      name: "adam"
-      checkpoint: ""
-      lr: 1e-4
-
+    l1: 0.0001
+    label_smoothing: 0.1
+  optimizer:
+    warm:
+      name: adam
+      checkpoint: ''
+      addon:
+        lr: 0.003
+        weight_decay: 0.001
+      prototype:
+        lr: 0.003
+    joint:
+      name: adam
+      checkpoint: ''
+      backbone:
+        lr: 0.0001
+        weight_decay: 0.01
+      addon:
+        lr: 0.003
+        weight_decay: 0.01
+      prototype:
+        lr: 0.003
+    last_layer:
+      name: adam
+      checkpoint: ''
+      lr: 0.0001
 log:
-  savedir: ""                       # dummy, will be overrided by saved/name 
-  track: 
-    every: 1 
-  checkpoint: 
-    every: 5 
-    model: True 
-    optimizer: True
-  diagnose: 
-    every: 5 
-    weights: True 
-    gradients: True 
-  wandb: 
-    enabled: True 
-    entity: "bahngmc-duke-university" 
-    project: ""
-
-
+  savedir: ''
+  track:
+    every: 1
+  checkpoint:
+    every: 2
+    model: true
+    optimizer: true
+  diagnose:
+    every: 5
+    weights: true
+    gradients: true
+  wandb:
+    enabled: true
+    entity: bahngmc-duke-university
+    project: ripe-overfit-sweep

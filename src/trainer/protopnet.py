@@ -12,7 +12,13 @@ import matplotlib.pyplot as plt
 import wandb
 from pprint import pprint
 from ..optimizer import init_optimizer
+from ..dataset import init_dataloader
 from ..model import ProtoPNet
+
+# One wandb.Image per prototype is untenable once prototype counts scale with the
+# label space: 3918 prototypes x ~6 pushes is ~16k uploads per run, and unreadable
+# in the UI. Visualise a prefix of the prototypes instead.
+MAX_PROTOTYPE_IMAGES = 64
 
 class ProtoPNetTrainer(Trainer):
 
@@ -38,6 +44,13 @@ class ProtoPNetTrainer(Trainer):
       "val" : deepcopy(self._metrics),
       "test" : deepcopy(self._metrics)
     }
+    # The base Trainer does not build dataloaders; each subclass does its own
+    # (cf. SupervisedTrainer). ProtoPNet additionally needs the push loader,
+    # whose images are unnormalised so prototypes project onto real patches.
+    dl_dict = init_dataloader(kwargs["dataset"])
+    self.train_dl, self.val_dl, self.test_dl = dl_dict["train"], dl_dict["val"], dl_dict["test"]
+    self.push_dl = dl_dict["push"]
+
     self.ce_coef = float(kwargs["loss"]["ce"])
     self.cluster_coef = float(kwargs["loss"]["cluster"])
     self.separation_coef = float(kwargs["loss"]["separation"])
@@ -408,7 +421,7 @@ class ProtoPNetTrainer(Trainer):
           global_min_proto_dist[j] = batch_min_proto_dist_j
           global_min_fmap_patches[j] = batch_min_fmap_patch_j
 
-          if visualize:
+          if visualize and j < MAX_PROTOTYPE_IMAGES:
             # get the receptive field boundary of the image patch that generates the representation
             rf_prototype_j = compute_rf_prototype(search_batch.size(2), batch_argmin_proto_dist_j, self.model.proto_layer_rf_info)
 
@@ -463,7 +476,8 @@ class ProtoPNetTrainer(Trainer):
             prototype_images[f"prototype_{j:04d}"] = wandb.Image(img_uint8, caption=f"Prototype {j:04d}")
                     
     # now that we have all patches for which prototypes should get pushed to, push. 
-    if visualize and prototype_images:
+    # wandb.run is None when log.wandb.enabled is false; logging then raises.
+    if visualize and prototype_images and wandb.run is not None:
       wandb.log(prototype_images)
 
     prototype_update = np.reshape(global_min_fmap_patches, tuple(prototype_shape))

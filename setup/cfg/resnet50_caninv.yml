@@ -1,72 +1,80 @@
-name: ""                          # run name. If empty, then uses current timestamp
+name: resnet50_caninv_v2
 seed: 0
-n_gpus: 1                         # 0 = cpu, 1 = cuda:0, >1 = multi-gpu setup
-
+n_gpus: 1
 run:
   dataset:
-    name: "canadian_invertebrates"  # locally assembled BOLD export; never downloaded
-    rank: "species"               # taxonomic target; missing labels are excluded
-    min_samples: 10               # count after sequence/image filtering, before splitting
-    allowed_bases: "ACGTN"        # drop reads with alignment gaps or other IUPAC codes
-    group_by: ["sequence", "image"]   # keep a barcode/photo wholly within one split
-    oversample: 1.0               # balanced train size = X * filtered train size; null disables
-    seed: 0                       # reproducible splitting and balancing
-    split: [0.6, 0.2, 0.2]          # label-stratified, group-respecting train/val/test ratios
+    name: canadian_invertebrates
+    rank: species
+    min_samples: 10
+    allowed_bases: ACGTN
+    group_by:
+    - sequence
+    - image
+    split:
+    - 0.6
+    - 0.2
+    - 0.2
+    seed: 0
+    oversample: 1.0
+    augmentation:
+      hflip: 0.5
+      vflip: 0.5
+      rotation: 180
+      crop:
+      - 0.6
+      - 1.0
+      color_jitter: 0.2
     train:
       subsample: 1.0
       batch_size: 64
       num_workers: 4
-      pin_memory: True
-      shuffle: True
+      pin_memory: true
+      shuffle: true
     push:
       subsample: 1.0
       batch_size: 64
       num_workers: 4
-      pin_memory: True
-      shuffle: False
+      pin_memory: true
+      shuffle: false
     val:
       subsample: 1.0
       batch_size: 64
       num_workers: 4
-      pin_memory: True
+      pin_memory: true
     test:
       subsample: 1.0
       batch_size: 64
       num_workers: 4
-      pin_memory: True
-
+      pin_memory: true
   epoch: 0
-  total_epochs: 20
-
+  total_epochs: 25
   model:
-    name: "resnet50"
-    checkpoint: ""
-    num_classes: 1959              # species with >=10 ACGTN-only samples
-
+    name: resnet50
+    checkpoint: ''
+    num_classes: 1959
   loss:
-    name: "ce"
+    name: ce
     ce: 1.0
-
+    label_smoothing: 0.1
   optimizer:
     all:
-      name: "adam"
-      checkpoint: ""
-      lr: 1e-3
-      weight_decay: 1e-3
-
+      name: adam
+      checkpoint: ''
+      lr: 0.0001
+      weight_decay: 0.01
 log:
-  savedir: ""                       # dummy, will be overrided by saved/name
+  savedir: ''
   track:
     every: 1
   checkpoint:
-    every: 5
-    model: True
-    optimizer: True
+    every: 2
+    model: true
+    optimizer: true
   diagnose:
     every: 5
-    weights: True
-    gradients: True
+    weights: true
+    gradients: true
   wandb:
-    enabled: False
-    entity: "bahngmc-duke-university"
-    project: ""
+    enabled: true
+    entity: bahngmc-duke-university
+    project: ripe-overfit-sweep

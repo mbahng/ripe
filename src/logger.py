@@ -10,6 +10,25 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
+def _safe_histogram(values):
+  """wandb.Histogram over a tensor, or None when numpy cannot bin it.
+
+  np.histogram raises "Too many bins for data range" on constant tensors (e.g.
+  ProtoPNet's all-ones buffer) and on any array holding inf/nan. Diagnostics
+  must never take down a training run.
+  """
+  import numpy as np
+  array = values.detach().cpu().numpy().ravel()
+  if array.size == 0 or not np.isfinite(array).all():
+    return None
+  try:
+    return wandb.Histogram(array)  # type: ignore
+  except ValueError:
+    # numpy refuses to bin ranges it cannot split into finite-sized bins:
+    # constant tensors, denormal-scale spreads, or near-overflow magnitudes.
+    return None
+
+
 class Logger: 
   """
   Logs and saves the following. 
@@ -44,8 +63,10 @@ class Logger:
         entity=cfg_log["wandb"]["entity"],
         # Set the wandb project where this run will be logged.
         project=cfg_log["wandb"]["project"],
-        # Track hyperparameters and run metadata.
-        config=cfg,
+        # Track hyperparameters and run metadata. Pass the plain dict so the
+        # nested config is logged under its real keys (run.optimizer.all.lr,
+        # ...) and lines up with the parameter names a sweep sets.
+        config=cfg._cfg,
         name=cfg["name"],
         # Store wandb data in the same directory as other run data
         dir=self.savedir
@@ -139,14 +160,18 @@ class Logger:
       if self.diagnose.get("weights") and self.wandb_logger:
         weights_log = {}
         for name, param in model.named_parameters():
-          weights_log[f"weights/{name}"] = wandb.Histogram(param.detach().cpu().numpy()) # type: ignore
+          hist = _safe_histogram(param)
+          if hist is not None:
+            weights_log[f"weights/{name}"] = hist
         self.wandb_logger.log(weights_log, step=trainer.epoch)
 
       if self.diagnose.get("gradients") and self.wandb_logger: 
         grads_log = {}
         for name, param in model.named_parameters():
           if param.grad is not None:
-            grads_log[f"gradients/{name}"] = wandb.Histogram(param.grad.detach().cpu().numpy()) # type: ignore
+            hist = _safe_histogram(param.grad)
+            if hist is not None:
+              grads_log[f"gradients/{name}"] = hist
         self.wandb_logger.log(grads_log, step=trainer.epoch)
 
       if self.diagnose.get("sample"): 

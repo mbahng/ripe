@@ -1,4 +1,4 @@
-from setup.cfg import Config
+from setup.cfg import Config, parse_overrides
 from src.trainer import Trainer
 from src.loss import *
 from src.logger import Logger
@@ -42,8 +42,10 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument('--cfg', type=str, default="setup/cfg/protopnet.yml", help='Path to config file.')
   parser.add_argument('--resume', action='store_true', help='Continue from prev run.')
-  args = parser.parse_args()
+  # unknown args are dotted config overrides (--run.optimizer.all.lr=0.0003),
+  # which is how a wandb sweep agent passes hyperparameters
+  args, extra = parser.parse_known_args()
 
-  cfg = Config(args.cfg, resume=args.resume)
+  cfg = Config(args.cfg, resume=args.resume, overrides=parse_overrides(extra))
 
   main(cfg)

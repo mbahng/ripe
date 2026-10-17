@@ -19,7 +19,7 @@ class Trainer:
     
     model_name = kwargs["model"]["name"]
 
-    if model_name == "convolutional" or "resnet" in model_name: return super().__new__(SupervisedTrainer) # type: ignore
+    if model_name in ("convolutional", "geneticcnn") or "resnet" in model_name: return super().__new__(SupervisedTrainer) # type: ignore
     elif model_name == "protopnet": return super().__new__(ProtoPNetTrainer) # type: ignore
     elif model_name == "prototree": return super().__new__(ProtoTreeTrainer) # type: ignore
     else: raise NotImplementedError
