@@ -1,6 +1,7 @@
 import os
 import sys
 import yaml
+import numpy as np
 import torch
 from .trainer import Trainer
 import wandb
@@ -9,6 +10,15 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+
+def _histogram(tensor, num_bins=64, eps=1e-8):
+  """wandb.Histogram that survives collapsed (near-constant) tensors, e.g. under huge weight decay."""
+  arr = tensor.detach().float().cpu().numpy().ravel()
+  arr = arr[np.isfinite(arr)]
+  if arr.size == 0:
+    return None
+  lo, hi = arr.min() - eps, arr.max() + eps
+  return wandb.Histogram(np_histogram=np.histogram(arr, bins=num_bins, range=(lo, hi))) # type: ignore
 
 class Logger: 
   """
@@ -141,14 +151,18 @@ class Logger:
       if self.diagnose.get("weights") and self.wandb_logger:
         weights_log = {}
         for name, param in model.named_parameters():
-          weights_log[f"weights/{name}"] = wandb.Histogram(param.detach().cpu().numpy()) # type: ignore
+          hist = _histogram(param)
+          if hist is not None:
+            weights_log[f"weights/{name}"] = hist
         self.wandb_logger.log(weights_log, step=trainer.epoch)
 
       if self.diagnose.get("gradients") and self.wandb_logger: 
         grads_log = {}
         for name, param in model.named_parameters():
           if param.grad is not None:
-            grads_log[f"gradients/{name}"] = wandb.Histogram(param.grad.detach().cpu().numpy()) # type: ignore
+            hist = _histogram(param.grad)
+            if hist is not None:
+              grads_log[f"gradients/{name}"] = hist
         self.wandb_logger.log(grads_log, step=trainer.epoch)
 
       if self.diagnose.get("sample"): 
