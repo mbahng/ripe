@@ -67,6 +67,49 @@
 
    Either flag on its own is enough to start an agent; with `--count` as well, whichever limit is reached first wins.
 
+## Running on one machine or many
+
+   An *agent* is one `sweep.py` process that pulls configs from the sweep's queue and runs them one at a time. To parallelize, run more agents against the same sweep id. There are two ways to do that.
+
+   ### A. Create the sweep and run it right away (one agent)
+
+   With any of `--count`, `--walltime` or `--trialtime`, `sweep.py` creates the sweep and starts an agent in the same command:
+   ```
+   # stop after 8 hours total, and cap each trial at 2 hours
+   python sweep.py --cfg setup/sweep/resnet50_bioscan1m.yml --walltime 8 --trialtime 2
+
+   # or bound it by number of trials instead
+   python sweep.py --cfg setup/sweep/resnet50_bioscan1m.yml --count 10 --trialtime 2
+   ```
+   `--trialtime` on its own does not start an agent; it only sets the per-trial limit, so pair it with `--count` or `--walltime`. Use this form on a single GPU. It still prints the sweep id, so you can add more agents later with the commands in section B.
+
+   ### B. Create the sweep once, then run an agent on each of N nodes
+
+   Use this when you have several interactive nodes, each with its own GPU (e.g. 6 nodes with one A5000 each).
+
+   1. **Create the sweep once**, from any node or the login node. With no budget flag, this registers the sweep and prints its id without running anything:
+      ```
+      python sweep.py --cfg setup/sweep/resnet50_bioscan1m.yml
+      # Created sweep: abc123xy
+      ```
+   2. **On each node**, run an agent against that id. Every node uses the same command:
+      ```
+      python sweep.py --cfg setup/sweep/resnet50_bioscan1m.yml --id abc123xy --walltime 8 --trialtime 2
+      ```
+      The agents pull different configs from W&B, so trials never overlap. Set `--walltime` to a little less than your node allocation so the agent stops cleanly before the node is reclaimed, and `--trialtime` so a single long trial can't run past it.
+
+   Things to check for the multi-node case:
+   - **`saved/` must be shared.** Every node writes into `saved/sweep-abc123xy/`, so the repo has to sit on a filesystem mounted on all nodes (here, `/usr/project/xtmp`). Trial directories are named by W&B run id, so nodes do not collide. Each agent re-copies the same `sweep.yml` and `base.yml` into the sweep directory, which is harmless because the contents are identical.
+   - **One GPU per node.** Set `n_gpus: 1` in the base config. `main.py` then uses `cuda:0`, which is the node's only GPU.
+   - **Several GPUs on one node.** Pin each agent to its own GPU with `CUDA_VISIBLE_DEVICES`, in a separate terminal or background job per GPU:
+      ```
+      CUDA_VISIBLE_DEVICES=0 python sweep.py --cfg ... --id abc123xy --walltime 8 &
+      CUDA_VISIBLE_DEVICES=1 python sweep.py --cfg ... --id abc123xy --walltime 8 &
+      ```
+   - **Always pass `--id` on the extra nodes.** Without it, `sweep.py` creates a second, separate sweep.
+   - **Budgets are per agent.** `--count` and `--walltime` bound one agent, not the whole sweep. Add `run_cap` to the spec to cap the total number of runs across all agents.
+   - **Closing the sweep.** Agents ending does not close the sweep on the W&B side. Pass `--finish` to the last agent, or run `wandb sweep --stop <entity>/<project>/<id>`.
+
 ## Notes
 
    - **Metric names are flattened.** `trainer.metrics` is nested as `{"train": {...}, "val": {...}}`, but the wandb client preserves nesting rather than producing a single addressable key, so `Logger.save` flattens it to `train.accuracy`, `val.accuracy`, and so on. Your sweep's `metric.name` must match one of those flat keys.
