@@ -5,7 +5,7 @@ from src.logger import Logger
 import argparse
 from pprint import pprint
 
-def main(cfg: Config): 
+def main(cfg: Config, profile: bool = False):
   """
   Main script for nondistributed training
   """
@@ -19,6 +19,7 @@ def main(cfg: Config):
                     loss_cfg=run.pop("loss"),
                     optimizer_cfg=run.pop("optimizer"),
                     **run)
+  if profile: trainer.profile()
 
   # then run initial epoch to validate that everything runs.
   trainer.train(stage=trainer.Stage.EVAL) # type: ignore
@@ -37,13 +38,18 @@ def main(cfg: Config):
   pprint(trainer.metrics)
   logger.save(trainer)
 
+  if profile:
+    trainer.profiler.stop()
+    trainer.profiler.report()
+
 
 if __name__ == "__main__": 
   parser = argparse.ArgumentParser()
   parser.add_argument('--cfg', type=str, help='Path to config file.')
   parser.add_argument('--resume', action='store_true', help='Continue from prev run.')
+  parser.add_argument('--profile', action='store_true', help='Print a CPU/GPU bottleneck report at the end of the run.')
   args = parser.parse_args()
 
   cfg = Config(args.cfg, resume=args.resume)
 
-  main(cfg)
+  main(cfg, profile=args.profile)

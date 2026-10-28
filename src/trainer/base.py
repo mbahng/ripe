@@ -42,8 +42,20 @@ class Trainer:
       "val" : deepcopy(self._metrics),
     }
 
+  def profile(self):
+    """
+    Time the dataloaders and sample system utilization. Call right after construction;
+    afterwards call self.profiler.stop() and self.profiler.report().
+    """
+    from ..profiler import Profiler
+    self.profiler = Profiler(device=self.device)
+    self.train_dl = self.profiler.wrap(self.train_dl, "train")
+    self.val_dl = self.profiler.wrap(self.val_dl, "val")
+    self.test_dl = self.profiler.wrap(self.test_dl, "test")
+    self.profiler.start()
+
   def run(self, logger) -> None:
-    ... 
+    ...
 
   @torch.enable_grad
   def train(self, stage=None) -> Dict: 
