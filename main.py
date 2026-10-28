@@ -21,7 +21,7 @@ def main(cfg: Config):
                     **run)
 
   # then run initial epoch to validate that everything runs.
-  trainer.train(initial=True)
+  trainer.train(stage=trainer.Stage.EVAL) # type: ignore
   trainer.val() 
 
   # then initialize logger, create directory, save config, and save epoch 0 metrics

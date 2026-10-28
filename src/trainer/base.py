@@ -1,4 +1,5 @@
 import torch
+from enum import Enum
 from typing import Dict
 from copy import deepcopy
 
@@ -9,7 +10,12 @@ class Trainer:
   
   This class acts as a Factory to instantiate the correct Trainer subclass
   based on the model type.
+
+  Each subclass defines its own nested ``Stage`` enum, which must include an
+  ``EVAL`` member (an evaluation-only pass); ``train`` takes one of its members.
   """
+  Stage: type[Enum]
+
   def __new__(cls, **kwargs):
     # Import inside method to avoid circular import
     from .supervised import SupervisedTrainer 
@@ -40,7 +46,7 @@ class Trainer:
     ... 
 
   @torch.enable_grad
-  def train(self, initial=False) -> Dict: 
+  def train(self, stage=None) -> Dict: 
     ...
 
   @torch.no_grad

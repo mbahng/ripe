@@ -1,4 +1,5 @@
 import torch
+from enum import Enum, auto
 from tqdm import tqdm
 import sys
 import time
@@ -18,6 +19,10 @@ class SupervisedTrainer(Trainer):
   """Trainer implementation for supervised models (MLP, CNN, etc.)"""
 
   model: torch.nn.Module
+
+  class Stage(Enum):
+    EVAL = auto()  # one pass over the train set with no optimizer step and no epoch increment
+    TRAIN = auto()    # a normal epoch: forward, backward, step
 
   def __init__(self, device, dataset_cfg, model_cfg, loss_cfg, optimizer_cfg, epoch, **kwargs):
     super().__init__(device, dataset_cfg, model_cfg, loss_cfg, optimizer_cfg, epoch, **kwargs)
@@ -63,7 +68,10 @@ class SupervisedTrainer(Trainer):
       logger.save(self)
 
   @torch.enable_grad
-  def train(self, initial=False):
+  def train(self, stage=None):
+    # None means a normal training epoch.
+    if stage is None: stage = self.Stage.TRAIN
+    update = stage != self.Stage.EVAL
     train_metrics = deepcopy(self._metrics)
     start = time.time()
     self.model.train()
@@ -74,7 +82,7 @@ class SupervisedTrainer(Trainer):
       y_pred = self.model(x)
       loss = self.loss(y_pred, y)
 
-      if not initial: 
+      if update: 
         self.model.zero_grad()
         loss.backward()
         self.optimizer.step()
@@ -91,7 +99,7 @@ class SupervisedTrainer(Trainer):
     train_metrics["accuracy"] = train_metrics["n_correct"] / train_metrics["n_samples"] if train_metrics["n_samples"] else 0.0
 
     self.metrics["train"] = train_metrics
-    if not initial: self.epoch += 1 
+    if update: self.epoch += 1 
     return train_metrics
 
   @torch.no_grad
