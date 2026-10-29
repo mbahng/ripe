@@ -119,14 +119,20 @@ def init_dataloader(cfg_dataset: dict) -> Dict[str, DataLoader]:
                         batch_size=cfg_dataset["train"]["batch_size"], 
                         shuffle=cfg_dataset["train"]["shuffle"], 
                         num_workers=cfg_dataset["train"]["num_workers"], 
+                        pin_memory=cfg_dataset["train"]["pin_memory"],
+                        persistent_workers=cfg_dataset["train"]["persistent_workers"],
                         collate_fn=collate)
   val_dl = DataLoader(val_ds, 
                       batch_size=cfg_dataset["val"]["batch_size"], 
                       num_workers=cfg_dataset["val"]["num_workers"], 
+                      pin_memory=cfg_dataset["train"]["pin_memory"],
+                      persistent_workers=cfg_dataset["train"]["persistent_workers"],
                       collate_fn=collate)
   test_dl = DataLoader(test_ds, 
                        batch_size=cfg_dataset["test"]["batch_size"], 
                        num_workers=cfg_dataset["test"]["num_workers"], 
+                       pin_memory=cfg_dataset["train"]["pin_memory"],
+                       persistent_workers=cfg_dataset["train"]["persistent_workers"],
                        collate_fn=collate)
 
   return {
