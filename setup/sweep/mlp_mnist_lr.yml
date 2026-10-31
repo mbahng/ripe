@@ -5,7 +5,7 @@ project: "ripe"
 
 method: bayes                   # grid | random | bayes
 metric:
-  name: val.accuracy            # wandb flattens the nested metrics dict with a dot,
+  name: val.balanced_accuracy            # wandb flattens the nested metrics dict with a dot,
   goal: maximize                # so trainer.metrics["val"]["accuracy"] logs as val.accuracy
 
 parameters:                     # keys are dot paths into the trial config

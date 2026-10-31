@@ -5,7 +5,7 @@ project: "ripe"
 
 method: bayes
 metric:
-  name: val.accuracy
+  name: val.balanced_accuracy
   goal: maximize
 
 parameters:

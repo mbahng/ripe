@@ -1,4 +1,6 @@
-name: "resnet18_bioscan1m_best"   # best trial of sweep w7utgvw7; savedir follows the name
+name: "resnet18_bioscan1m_best"
+# Best trial of sweep w7utgvw7 (run 6yxqlhuh) by val.accuracy; the
+# learning rate, momentum, weight decay and augmentation below are its values.
 seed: 0
 n_gpus: 1                         # 0 = cpu, 1 = cuda:0, >1 = multi-gpu setup
 
@@ -14,30 +16,30 @@ run:
       mean: [0.485, 0.456, 0.406]
       std: [0.229, 0.224, 0.225]
     augmentation:                 # online, train split only. 0 disables a step.
-      crop: 1                     # swept to 1: no random crop, the whole specimen is kept
+      crop: 1
       hflip: 0.5                  # plate-mounted specimens: any orientation is valid
       vflip: 0.5
       rotation: 180
-      color_jitter: 0.1           # keep mild, pigment is taxonomically informative
+      color_jitter: 0           # keep mild, pigment is taxonomically informative
     balance: True                 # balances the labels in the dataset
     split: [0.6, 0.2, 0.2]
     train:
       subsample: 1.0
       batch_size: 64
-      num_workers: 2
+      num_workers: 8
       persistent_workers: True
       pin_memory: True
       shuffle: True
     val:
       subsample: 1.0
       batch_size: 128
-      num_workers: 2
+      num_workers: 8
       persistent_workers: True
       pin_memory: True
     test:
       subsample: 1.0
       batch_size: 128
-      num_workers: 2
+      num_workers: 8
       persistent_workers: True
       pin_memory: True
 
@@ -58,10 +60,11 @@ run:
     all:
       name: "sgd"
       checkpoint: ""
-      lr: 3.768928525827811e-05     # swept. CrossEntropy reduces by sum, so the gradient
-                                    # scales with batch_size: equivalent to 2.4e-3 under
-                                    # mean reduction at batch_size 64.
-      momentum: 0.95
+      lr: 7.45757868545772e-05
+                                    # CrossEntropy reduces by sum, so the gradient
+                                    # scales with batch_size: equivalent to 4.77e-03
+                                    # under mean reduction at batch_size 64.
+      momentum: 0.9
       betas: [0.9, 0.999]
       weight_decay: 0.01
 

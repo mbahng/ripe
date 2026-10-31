@@ -47,6 +47,7 @@ class SupervisedTrainer(Trainer):
       "n_correct" : 0,
       "n_samples" : 0,
       "accuracy" : 0.0,
+      "balanced_accuracy" : 0.0,
       "time" : 0.0
     }
 
@@ -76,6 +77,11 @@ class SupervisedTrainer(Trainer):
   def _train(self, stage):
     update = stage != self.Stage.EVAL
     train_metrics = deepcopy(self._metrics)
+    # Per-class recall tallies, sized from the logits on the first batch because
+    # MLP, CNN and ResNet expose their class count differently. Plain accuracy is
+    # dominated by the common labels on a long-tailed split; this weights each
+    # label equally however few samples it has.
+    class_correct = class_total = None
     start = time.time()
     self.model.train(update)
     # Get the original terminal stdout if logger has redirected it
@@ -96,10 +102,18 @@ class SupervisedTrainer(Trainer):
       pred_labels = y_pred.argmax(dim=1)
       correct = (pred_labels == y).sum().item() 
       train_metrics["n_correct"] += correct
+      if class_correct is None:
+        class_correct = torch.zeros(y_pred.size(1), device=self.device)
+        class_total = torch.zeros(y_pred.size(1), device=self.device)
+      class_correct.index_add_(0, y, (pred_labels == y).float())
+      class_total.index_add_(0, y, torch.ones_like(y, dtype=torch.float))
       train_metrics["n_samples"] += y.size(0)
 
     train_metrics["time"] = time.time() - start
     train_metrics["accuracy"] = train_metrics["n_correct"] / train_metrics["n_samples"] if train_metrics["n_samples"] else 0.0
+    if class_total is not None:
+      seen = class_total > 0
+      train_metrics["balanced_accuracy"] = (class_correct[seen] / class_total[seen]).mean().item()
 
     self.metrics["train"] = train_metrics
     if update: self.epoch += 1 
@@ -108,6 +122,11 @@ class SupervisedTrainer(Trainer):
   @torch.no_grad
   def val(self):
     val_metrics = deepcopy(self._metrics)
+    # Per-class recall tallies, sized from the logits on the first batch because
+    # MLP, CNN and ResNet expose their class count differently. Plain accuracy is
+    # dominated by the common labels on a long-tailed split; this weights each
+    # label equally however few samples it has.
+    class_correct = class_total = None
     start = time.time()
     self.model.eval()
     # Get the original terminal stdout if logger has redirected it
@@ -123,9 +142,17 @@ class SupervisedTrainer(Trainer):
       pred_labels = y_pred.argmax(dim=1)
       correct = (pred_labels == y).sum().item() 
       val_metrics["n_correct"] += correct
+      if class_correct is None:
+        class_correct = torch.zeros(y_pred.size(1), device=self.device)
+        class_total = torch.zeros(y_pred.size(1), device=self.device)
+      class_correct.index_add_(0, y, (pred_labels == y).float())
+      class_total.index_add_(0, y, torch.ones_like(y, dtype=torch.float))
       val_metrics["n_samples"] += y.size(0)
     val_metrics["time"] = time.time() - start
     val_metrics["accuracy"] = val_metrics["n_correct"] / val_metrics["n_samples"] if val_metrics["n_samples"] else 0.0
+    if class_total is not None:
+      seen = class_total > 0
+      val_metrics["balanced_accuracy"] = (class_correct[seen] / class_total[seen]).mean().item()
 
     self.metrics["val"] = val_metrics
     return val_metrics
@@ -133,6 +160,11 @@ class SupervisedTrainer(Trainer):
   @torch.no_grad
   def test(self): 
     test_metrics = deepcopy(self._metrics)
+    # Per-class recall tallies, sized from the logits on the first batch because
+    # MLP, CNN and ResNet expose their class count differently. Plain accuracy is
+    # dominated by the common labels on a long-tailed split; this weights each
+    # label equally however few samples it has.
+    class_correct = class_total = None
     start = time.time()
     self.model.eval()
     # Get the original terminal stdout if logger has redirected it
@@ -148,9 +180,17 @@ class SupervisedTrainer(Trainer):
       pred_labels = y_pred.argmax(dim=1)
       correct = (pred_labels == y).sum().item() 
       test_metrics["n_correct"] += correct
+      if class_correct is None:
+        class_correct = torch.zeros(y_pred.size(1), device=self.device)
+        class_total = torch.zeros(y_pred.size(1), device=self.device)
+      class_correct.index_add_(0, y, (pred_labels == y).float())
+      class_total.index_add_(0, y, torch.ones_like(y, dtype=torch.float))
       test_metrics["n_samples"] += y.size(0)
     test_metrics["time"] = time.time() - start
     test_metrics["accuracy"] = test_metrics["n_correct"] / test_metrics["n_samples"] if test_metrics["n_samples"] else 0.0
+    if class_total is not None:
+      seen = class_total > 0
+      test_metrics["balanced_accuracy"] = (class_correct[seen] / class_total[seen]).mean().item()
 
     self.metrics["test"] = test_metrics
     return test_metrics
