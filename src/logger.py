@@ -38,6 +38,9 @@ class Logger:
     self.track = cfg_log["track"]
     self.checkpoint = cfg_log["checkpoint"] 
     self.diagnose = cfg_log["diagnose"]
+    # Optional. {epoch, metric, below}: give up on a run that is still this bad at
+    # a fixed epoch, so a sweep spends its budget elsewhere. Absent means never.
+    self.abandon = cfg_log.get("abandon")
 
     self.wandb_enabled = cfg_log["wandb"]["enabled"]
     self.is_distributed = True if cfg["n_gpus"] > 1 else False
@@ -125,15 +128,27 @@ class Logger:
     os.makedirs(epoch_save_dir, exist_ok=True)
     with open(os.path.join(epoch_save_dir, "metrics.json"), 'w') as f:
       json.dump(trainer.metrics, f, indent=2)
+    # Flatten to "<split>.<metric>" rather than logging the nested dict: the
+    # client preserves nesting, and a sweep's metric.name has to match a single
+    # unambiguous key. This is what sweep.py targets.
+    flat = {f"{split}.{name}": value
+            for split, metrics in trainer.metrics.items()
+            for name, value in metrics.items()}
     if self.wandb_enabled and self.wandb_logger is not None:
-      # Flatten to "<split>.<metric>" rather than logging the nested dict: the
-      # client preserves nesting, and a sweep's metric.name has to match a
-      # single unambiguous key. This is what sweep.py targets.
-      self.wandb_logger.log(
-          {f"{split}.{name}": value
-           for split, metrics in trainer.metrics.items()
-           for name, value in metrics.items()},
-          step=trainer.epoch)
+      self.wandb_logger.log(flat, step=trainer.epoch)
+
+    # Checked after the metrics are written and logged, so the epoch that failed
+    # is still recorded -- a bayes sweep needs to see where the bad region is.
+    if self.abandon and trainer.epoch == self.abandon["epoch"]:
+      metric = self.abandon["metric"]
+      if metric not in flat:
+        raise KeyError(f"log.abandon.metric {metric!r} is not one of {sorted(flat)}")
+      if flat[metric] < self.abandon["below"]:
+        print(f"[abandon] {metric}={flat[metric]:.4f} < {self.abandon['below']} at epoch "
+              f"{trainer.epoch}; stopping this run", flush=True)
+        if self.wandb_logger is not None:
+          self.wandb_logger.finish(exit_code=0)   # a completed trial, not a crash
+        raise SystemExit(0)
       
     model = trainer.model.module if isinstance(trainer.model, DDP) else trainer.model 
 
