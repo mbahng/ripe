@@ -56,12 +56,13 @@ run:
     # add hyperparameters here
 
   optimizer:
-    name: ""                        # sgd, adam
-    checkpoint: ""                  # checkpoint path to optimizer
-    lr: 1e-3                        # learning rate
-    momentum: 0.0                   # momentum, only relevant for SGD
-    betas: [0.9, 0.999]             # betas, relevant only for Adam
-    weight_decay: 0.0
+    all:
+      name: ""                        # sgd, adam
+      checkpoint: ""                  # checkpoint path to optimizer
+      lr: 1e-3                        # learning rate
+      momentum: 0.0                   # momentum, only relevant for SGD
+      betas: [0.9, 0.999]             # betas, relevant only for Adam
+      weight_decay: 0.0
 
 log:
   savedir: ""                       # dummy, will be overrided by saved/name

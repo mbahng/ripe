@@ -4,23 +4,27 @@ import torch
 from .scheduler import *
 
 def init_optimizer(cfg_optim: dict, model: nn.Module): 
-  match cfg_optim["name"]: 
+  # The settings live under an "all" key -- one optimizer over every parameter --
+  # so that configs which instead train parameter groups on separate schedules can
+  # name those groups at the same level without the two shapes being ambiguous.
+  spec = cfg_optim["all"]
+  match spec["name"]: 
     case "sgd": 
       optimizer = optim.SGD(
           params=model.parameters(), 
-          lr=float(cfg_optim["lr"]), 
-          momentum=float(cfg_optim["momentum"]), 
-          weight_decay=float(cfg_optim["weight_decay"]))
+          lr=float(spec["lr"]), 
+          momentum=float(spec["momentum"]), 
+          weight_decay=float(spec["weight_decay"]))
     case "adam": 
       optimizer = optim.Adam(
           params=model.parameters(), 
-          lr=float(cfg_optim["lr"]), 
-          betas=cfg_optim["betas"],
-          weight_decay=cfg_optim["weight_decay"]) 
+          lr=float(spec["lr"]), 
+          betas=spec["betas"],
+          weight_decay=float(spec["weight_decay"])) 
     case _: 
       raise Exception("Optimizer not defined")
 
-  if ckpt_path := cfg_optim["checkpoint"]: 
+  if ckpt_path := spec["checkpoint"]: 
     optimizer.load_state_dict(torch.load(ckpt_path))
   return optimizer
 

@@ -60,15 +60,16 @@ run:
     label_smoothing: 0.0
 
   optimizer:
-    name: "sgd"
-    checkpoint: ""
-    lr: 1e-4                      # CrossEntropy reduces by sum, so the gradient
-                                  # scales with batch_size: this is equivalent
-                                  # to lr 1.28e-2 under mean reduction at
-                                  # batch_size 128. Rescale if you change it.
-    momentum: 0.9
-    betas: [0.9, 0.999]
-    weight_decay: 0.0
+    all:
+      name: "sgd"
+      checkpoint: ""
+      lr: 1e-4                      # CrossEntropy reduces by sum, so the gradient
+                                    # scales with batch_size: this is equivalent
+                                    # to lr 1.28e-2 under mean reduction at
+                                    # batch_size 128. Rescale if you change it.
+      momentum: 0.9
+      betas: [0.9, 0.999]
+      weight_decay: 0.0
 
 log:
   savedir: ""
