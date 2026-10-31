@@ -146,4 +146,17 @@ def init_dataloader(cfg_dataset: dict) -> Dict[str, DataLoader]:
 
   loaders = {"train": train_dl, "val": val_dl, "test": test_dl}
 
+  # Only the prototype datasets publish a push split, and only the prototype trainers
+  # ask for one, so it is built on demand. Requiring it unconditionally would make
+  # every other dataset unloadable. The push config block is optional too; without it
+  # the split borrows train's workers and batch size.
+  if "push" in ds_dict:
+    push_cfg = cfg_dataset.get("push", cfg_dataset["train"])
+    loaders["push"] = DataLoader(ds_dict["push"],
+                                 batch_size=push_cfg["batch_size"],
+                                 shuffle=False,
+                                 num_workers=push_cfg["num_workers"],
+                                 pin_memory=push_cfg["pin_memory"],
+                                 persistent_workers=push_cfg["persistent_workers"],
+                                 collate_fn=collate)
   return loaders

@@ -1,0 +1,118 @@
+name: protopnet_resnet18pretrained_bioscan1m   # sweep name; saved under saved/sweep-<id>/
+base_config: setup/cfg/protopnet/protopnet_resnet18pretrained_bioscan1m.yml
+entity: "bahngmc-duke-university"
+project: "ripe"
+
+method: bayes                   # grid | random | bayes
+metric:
+  name: val.balanced_accuracy   # last value logged: after warm, joint, push and last-layer epochs.
+                                # Mean per-class recall, so a trial cannot win by
+                                # serving only the common species.
+  goal: maximize
+
+# No early_terminate: hyperband judges trials against each other at bands spaced by
+# eta, so it cannot express a single check at a chosen epoch, and with this schedule
+# its second band would fall on a push, where every trial looks its worst. The
+# log.abandon parameters below are an absolute check at one epoch instead.
+
+parameters:                     # keys are dot paths into the trial config
+  # --- learning rates (Adam). Base config values in comments. ---
+  run.optimizer.joint.backbone.lr:        # 1e-4: pretrained backbone, keep it small
+    distribution: log_uniform_values
+    min: 1.0e-5
+    max: 1.0e-3
+  run.optimizer.joint.addon.lr:           # 3e-3
+    distribution: log_uniform_values
+    min: 3.0e-4
+    max: 1.0e-2
+  run.optimizer.joint.prototype.lr:       # 3e-3
+    distribution: log_uniform_values
+    min: 3.0e-4
+    max: 1.0e-2
+  run.optimizer.warm.addon.lr:            # 3e-3
+    distribution: log_uniform_values
+    min: 3.0e-4
+    max: 1.0e-2
+  run.optimizer.warm.prototype.lr:        # 3e-3
+    distribution: log_uniform_values
+    min: 3.0e-4
+    max: 1.0e-2
+  run.optimizer.last_layer.lr:            # 1e-4
+    distribution: log_uniform_values
+    min: 1.0e-5
+    max: 1.0e-3
+
+  # --- weight decay ---
+  run.optimizer.joint.backbone.weight_decay:   # 1e-2
+    values: [0.0, 1.0e-4, 1.0e-3, 1.0e-2]
+  run.optimizer.joint.addon.weight_decay:      # 1e-2
+    values: [0.0, 1.0e-4, 1.0e-3, 1.0e-2]
+
+  # --- prototype layout: [num_prototypes, dim, 1, 1]. The count must be a multiple of
+  # num_classes (1146 here), so these are 1, 3, 5, 10 per class. If rank or min_samples
+  # changes num_classes, regenerate this list. Base config: [5730, 128, 1, 1]. ---
+  run.model.prototype_shape:
+    values:
+      - [1146, 32, 1, 1]
+      - [1146, 64, 1, 1]
+      - [1146, 128, 1, 1]
+      - [1146, 256, 1, 1]
+      - [3438, 32, 1, 1]
+      - [3438, 64, 1, 1]
+      - [3438, 128, 1, 1]
+      - [3438, 256, 1, 1]
+      - [5730, 32, 1, 1]
+      - [5730, 64, 1, 1]
+      - [5730, 128, 1, 1]
+      - [5730, 256, 1, 1]
+      - [11460, 32, 1, 1]
+      - [11460, 64, 1, 1]
+      - [11460, 128, 1, 1]
+      - [11460, 256, 1, 1]
+
+  # --- schedule. The stage lengths are pinned rather than swept so that every trial
+  # is at the same point when the abandon check fires; only the last-layer stage
+  # varies. warm 3 + joint 50 + push_every 11 puts the pushes on epochs 13, 24, 35,
+  # 46 and 53, which leaves epoch 8 a plain joint epoch. ---
+  run.warm_epochs:
+    value: 3
+  run.joint_epochs:
+    value: 50
+  run.push_every:
+    value: 11
+  run.last_only_epochs:
+    distribution: int_uniform
+    min: 3
+    max: 10
+
+  # --- give up on a trial that is still bad after the warm stage and five joint
+  # epochs. Balanced accuracy rather than plain: with 1146 long-tailed species a
+  # model can post a respectable plain accuracy while only ever predicting the
+  # common ones, and that is exactly the trial worth abandoning. ---
+  log.abandon.epoch:
+    value: 8
+  log.abandon.metric:
+    value: "val.balanced_accuracy"
+  log.abandon.below:
+    value: 0.15
+
+  # --- loss terms. The ce coefficient stays 1.0 so the others read as ratios to it. ---
+  run.loss.cluster:                       # 0.8
+    distribution: log_uniform_values
+    min: 0.1
+    max: 3.0
+  run.loss.separation:                    # -0.08, negative by design
+    distribution: uniform
+    min: -0.5
+    max: -0.01
+  run.loss.l1:                            # 1e-4
+    values: [0.0, 1.0e-5, 1.0e-4, 1.0e-3]
+
+  # hflip/vflip stay fixed at 0.5: specimens are plate-mounted at arbitrary
+  # orientation, so those are label-preserving regardless of the other settings.
+  run.dataset.augmentation.crop:
+    values: [0.6, 0.8, 1.0]
+  run.dataset.augmentation.rotation:
+    values: [0, 90, 180]
+  run.dataset.augmentation.color_jitter:
+    values: [0.0, 0.1, 0.3]

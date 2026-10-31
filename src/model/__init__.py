@@ -2,6 +2,9 @@ import torch
 from .mlp import * 
 from .cnn import * 
 from .resnet import *
+from .protopnet import *
+from .prototree import *
+from .geneticcnn import *
 from torch.nn import Module
 from copy import deepcopy
 
@@ -37,6 +40,15 @@ def init_model(cfg_model: dict) -> Module:
     case "resnet152": 
       print("Loading Model: Resnet 152") 
       model = ResNet(block=Bottleneck, layers=[3, 8, 36, 3], pretrained="resnet152", **args)
+    case "protopnet": 
+      print("Loading Model: ProtoPNet")
+      model = ProtoPNet(**args)
+    case "geneticcnn": 
+      print("Loading Model: Genetic CNN")
+      model = GeneticCNN2D(**args)
+    case "prototree": 
+      print("Loading Model: ProtoTree")
+      model = ProtoTree(**args)
     case _: 
       raise Exception("Model not defined")
 

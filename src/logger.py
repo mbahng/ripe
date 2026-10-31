@@ -3,7 +3,7 @@ import sys
 import yaml
 import numpy as np
 import torch
-from .trainer import Trainer
+from .trainer import Trainer, ProtoTreeTrainer, ProtoPNetTrainer, SupervisedTrainer
 import wandb
 import json
 from torch.nn.parallel import DistributedDataParallel as DDP
@@ -157,7 +157,11 @@ class Logger:
       if self.checkpoint.get("model"): 
         torch.save(model.state_dict(), os.path.join(epoch_save_dir, "model.pt")) 
       if self.checkpoint.get("optimizer"): 
-        if isinstance(trainer, SupervisedTrainer): 
+        if isinstance(trainer, ProtoPNetTrainer) or isinstance(trainer, ProtoTreeTrainer): 
+          torch.save(trainer.warm_optimizer.state_dict(), os.path.join(epoch_save_dir, "warm_optimizer.pt")) 
+          torch.save(trainer.joint_optimizer.state_dict(), os.path.join(epoch_save_dir, "joint_optimizer.pt")) 
+          torch.save(trainer.last_optimizer.state_dict(), os.path.join(epoch_save_dir, "last_layer_optimizer.pt")) 
+        elif isinstance(trainer, SupervisedTrainer): 
           torch.save(trainer.optimizer.state_dict(), os.path.join(epoch_save_dir, "optimizer.pt")) 
         else: 
           raise ValueError("Not a valid trainer instance for saving optimizer.")
