@@ -61,20 +61,29 @@ class SupervisedTrainer(Trainer):
   def run(self, logger): 
     for epoch in range(self.epoch  + 1, self.total_epochs):
       print(f"Epoch: {epoch}")
-      self.train()
+      self.train(stage=self.Stage.TRAIN)
       self.val()
 
       pprint(self.metrics)
       logger.save(self)
 
-  @torch.enable_grad
   def train(self, stage=None):
-    # None means a normal training epoch.
-    if stage is None: stage = self.Stage.TRAIN
+    # Required rather than defaulted: TRAIN and EVAL differ by whether the run
+    # advances, and a caller that omits the stage is far more likely to have
+    # forgotten it than to want whichever one happened to be the default.
+    if stage is None:
+      raise ValueError(
+          f"train() needs an explicit stage, one of {[s.name for s in self.Stage]}")
+    # EVAL also runs without gradients and without putting the model in train mode,
+    # so it neither keeps autograd graphs alive nor updates BatchNorm statistics.
+    with torch.set_grad_enabled(stage != self.Stage.EVAL):
+      return self._train(stage)
+
+  def _train(self, stage):
     update = stage != self.Stage.EVAL
     train_metrics = deepcopy(self._metrics)
     start = time.time()
-    self.model.train()
+    self.model.train(update)
     # Get the original terminal stdout if logger has redirected it
     tqdm_file = getattr(sys.stdout, 'terminal', sys.stdout)
     for batch in tqdm(self.train_dl, leave=False, file=tqdm_file):

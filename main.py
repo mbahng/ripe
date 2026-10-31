@@ -31,8 +31,8 @@ def main(cfg: Config, profile: bool = False):
 
   trainer.run(logger)
 
-  # final epoch with test dataset evaluation
-  trainer.train()
+  # final evaluation pass over every split; no optimizer step, no epoch increment
+  trainer.train(stage=trainer.Stage.EVAL) # type: ignore
   trainer.val()
   trainer.test()
   pprint(trainer.metrics)
