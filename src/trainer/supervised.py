@@ -68,14 +68,8 @@ class SupervisedTrainer(Trainer):
       logger.save(self)
 
   def train(self, stage=None):
-    # Required rather than defaulted: TRAIN and EVAL differ by whether the run
-    # advances, and a caller that omits the stage is far more likely to have
-    # forgotten it than to want whichever one happened to be the default.
     if stage is None:
-      raise ValueError(
-          f"train() needs an explicit stage, one of {[s.name for s in self.Stage]}")
-    # EVAL also runs without gradients and without putting the model in train mode,
-    # so it neither keeps autograd graphs alive nor updates BatchNorm statistics.
+      raise ValueError( f"train() needs an explicit stage, one of {[s.name for s in self.Stage]}")
     with torch.set_grad_enabled(stage != self.Stage.EVAL):
       return self._train(stage)
 
