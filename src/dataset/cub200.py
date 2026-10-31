@@ -124,40 +124,25 @@ def cub200(dataset_cfg: dict) -> Tuple[Dict[str, Dataset], Callable]:
 
     print(f"Done: train={counts['train']}, val={counts['val']}, test={counts['test']}, errors={counts['errors']}")
 
-  normalize = transforms.Normalize(mean=(0.485, 0.456, 0.406),
-                                   std=(0.229, 0.224, 0.225))
-
+  transform = transforms.Compose([transforms.Resize(dataset_cfg["shape"]),
+                                  transforms.ToTensor(),
+                                  transforms.Normalize(dataset_cfg["normalize"]["mean"], dataset_cfg["normalize"]["std"])])
   train_transform = transforms.Compose([
       transforms.Resize(dataset_cfg["shape"]),
       *augmentations(dataset_cfg["augmentation"], dataset_cfg["shape"]),
       transforms.ToTensor(),
-      normalize,
+      transforms.Normalize(dataset_cfg["normalize"]["mean"], dataset_cfg["normalize"]["std"]),
   ])
 
   train_ds = datasets.ImageFolder("./data/cub200/cropped/train/", train_transform)
 
-  train_push_ds = datasets.ImageFolder(
-      "./data/cub200/cropped/train/",
-      transforms.Compose([
-          transforms.Resize(dataset_cfg["shape"]),
-          transforms.ToTensor(),
-      ]))
+  # Push uses the val/test pipeline: same normalization, and crucially no augmentation,
+  # since a prototype is projected onto a specific patch of a specific image and the
+  # recorded boxes have to refer to it.
+  train_push_ds = datasets.ImageFolder("./data/cub200/cropped/train/", transform)
 
-  val_ds = datasets.ImageFolder(
-      "./data/cub200/cropped/val/",
-      transforms.Compose([
-          transforms.Resize(dataset_cfg["shape"]),
-          transforms.ToTensor(),
-          normalize,
-      ]))
-
-  test_ds = datasets.ImageFolder(
-      "./data/cub200/cropped/test/",
-      transforms.Compose([
-          transforms.Resize(dataset_cfg["shape"]),
-          transforms.ToTensor(),
-          normalize,
-      ]))
+  val_ds = datasets.ImageFolder("./data/cub200/cropped/val/", transform)
+  test_ds = datasets.ImageFolder("./data/cub200/cropped/test/", transform)
 
   return ({"train" : train_ds, "push": train_push_ds, "val": val_ds, "test": test_ds},
           collate)

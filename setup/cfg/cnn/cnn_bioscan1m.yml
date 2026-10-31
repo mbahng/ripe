@@ -12,7 +12,9 @@ run:
                                   # changes the class count, so model.dimensions[-1]
                                   # must be updated to match.
     rank: "order"                 # order | family | subfamily | genus | species
-    normalize: True
+    normalize:
+      mean: [0.485, 0.456, 0.406]
+      std: [0.229, 0.224, 0.225]
     augmentation:                 # online, train split only. 0 disables a step.
       crop: 0.8                   # min area scale of the random resized crop
       hflip: 0.5                  # plate-mounted specimens: any orientation is valid
@@ -24,18 +26,21 @@ run:
     train:
       subsample: 1.0
       batch_size: 128
-      num_workers: 2
+      num_workers: 8
+      persistent_workers: True
       pin_memory: True
       shuffle: True
     val:
       subsample: 1.0
       batch_size: 128
-      num_workers: 2
+      num_workers: 8
+      persistent_workers: True
       pin_memory: True
     test:
       subsample: 1.0
       batch_size: 128
-      num_workers: 2
+      num_workers: 8
+      persistent_workers: True
       pin_memory: True
 
   epoch: 0

@@ -6,6 +6,9 @@ run:
   dataset:
     name: "cifar10"
     shape: [32, 32]               # must match model.in_size
+    normalize:                      # CIFAR10 channel statistics
+      mean: [0.4914, 0.4822, 0.4465]
+      std: [0.2470, 0.2435, 0.2616]
     augmentation:                 # online, train split only. 0 disables a step.
       hflip: 0.0                  # probability
       translate: 0.0              # max shift, as a fraction of width/height
@@ -18,18 +21,21 @@ run:
     train:
       subsample: 1.0
       batch_size: 128
-      num_workers: 2
+      num_workers: 8
+      persistent_workers: True
       pin_memory: True
       shuffle: True
     val:
       subsample: 1.0
       batch_size: 128
-      num_workers: 2
+      num_workers: 8
+      persistent_workers: True
       pin_memory: True
     test:
       subsample: 1.0
       batch_size: 128
-      num_workers: 2
+      num_workers: 8
+      persistent_workers: True
       pin_memory: True
 
   epoch: 0

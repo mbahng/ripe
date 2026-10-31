@@ -6,6 +6,9 @@ run:
   dataset: 
     name: "mnist"
     shape: [28, 28]                 # must match model.dimensions[0] = 28*28
+    normalize:                      # MNIST is single-channel, so one value per key
+      mean: [0.1307]
+      std: [0.3081]
     augmentation:                   # online, train split only. 0 disables a step.
       rotation: 10                  # degrees
       translate: 0.1                # max shift, as a fraction of width/height
@@ -15,18 +18,21 @@ run:
     train: 
       subsample: 1.0
       batch_size: 32
-      num_workers: 2
+      num_workers: 8
+      persistent_workers: True
       pin_memory: True
       shuffle: True
     val: 
       subsample: 1.0
       batch_size: 32
-      num_workers: 2
+      num_workers: 8
+      persistent_workers: True
       pin_memory: True
     test: 
       subsample: 1.0
       batch_size: 32
-      num_workers: 2
+      num_workers: 8
+      persistent_workers: True
       pin_memory: True
 
   epoch: 0

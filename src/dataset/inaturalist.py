@@ -33,17 +33,16 @@ def augmentations(augmentation: dict, shape):
 
 def inaturalist(dataset_cfg: dict) -> Tuple[Dict[str, Dataset], Callable]:
   # transform and augment
-  normalize = transforms.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
   transform = transforms.Compose([
     transforms.Resize(dataset_cfg["shape"]),
     transforms.ToTensor(),
-    normalize
+    transforms.Normalize(dataset_cfg["normalize"]["mean"], dataset_cfg["normalize"]["std"])
   ])
   train_transform = transforms.Compose([
     transforms.Resize(dataset_cfg["shape"]),
     *augmentations(dataset_cfg["augmentation"], dataset_cfg["shape"]),
     transforms.ToTensor(),
-    normalize
+    transforms.Normalize(dataset_cfg["normalize"]["mean"], dataset_cfg["normalize"]["std"])
   ])
 
   # split

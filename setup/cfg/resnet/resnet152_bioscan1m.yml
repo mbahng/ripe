@@ -5,12 +5,14 @@ n_gpus: 1                         # 0 = cpu, 1 = cuda:0, >1 = multi-gpu setup
 run:
   dataset:
     name: "bioscan1m"
-    shape: [224, 224]             # what the ImageNet-pretrained resnet101 expects
+    shape: [224, 224]             # what the ImageNet-pretrained resnet152 expects
     min_samples: 10               # drop labels with fewer rows; changing this or
                                   # rank changes the class count, so model.num_classes
                                   # must be updated to match
     rank: "species"                 # order | family | subfamily | genus | species
-    normalize: True               # ImageNet stats, matching the pretrained weights
+    normalize:                    # ImageNet stats, matching the pretrained weights
+      mean: [0.485, 0.456, 0.406]
+      std: [0.229, 0.224, 0.225]
     augmentation:                 # online, train split only. 0 disables a step.
       crop: 0.8
       hflip: 0.5                  # plate-mounted specimens: any orientation is valid
@@ -21,26 +23,29 @@ run:
     split: [0.6, 0.2, 0.2]
     train:
       subsample: 1.0
-      batch_size: 64
-      num_workers: 2
+      batch_size: 48
+      num_workers: 8
+      persistent_workers: True
       pin_memory: True
       shuffle: True
     val:
       subsample: 1.0
       batch_size: 128
-      num_workers: 2
+      num_workers: 8
+      persistent_workers: True
       pin_memory: True
     test:
       subsample: 1.0
       batch_size: 128
-      num_workers: 2
+      num_workers: 8
+      persistent_workers: True
       pin_memory: True
 
   epoch: 0
   total_epochs: 50
 
   model:
-    name: "resnet101"
+    name: "resnet152"
     checkpoint: ""
     num_classes: 1146               # insect orders with >= min_samples rows
 

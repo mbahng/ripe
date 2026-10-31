@@ -44,11 +44,13 @@ def svhn(dataset_cfg: dict) -> Tuple[Dict[str, Dataset], Callable]:
   transform = transforms.Compose([
     transforms.Resize(dataset_cfg["shape"]),
     transforms.ToTensor(),
+    transforms.Normalize(dataset_cfg["normalize"]["mean"], dataset_cfg["normalize"]["std"]),
   ])
   train_transform = transforms.Compose([
     transforms.Resize(dataset_cfg["shape"]),
     *augmentations(dataset_cfg["augmentation"]),
     transforms.ToTensor(),
+    transforms.Normalize(dataset_cfg["normalize"]["mean"], dataset_cfg["normalize"]["std"]),
   ])
 
   # split

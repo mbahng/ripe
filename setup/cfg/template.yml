@@ -6,6 +6,11 @@ run:
   dataset:
     name: "cub200"                        # name of the dataset
     shape: [224, 224]               # (height, width) every input image is resized to
+    normalize:                      # per-channel input standardization, applied to every split
+      mean: [0.485, 0.456, 0.406]   # except push, which stays raw [0, 1] so prototype overlays
+      std: [0.229, 0.224, 0.225]    # remain viewable; ProtoPNetTrainer re-applies these there.
+                                    # Match the backbone's pretrained weights (these are the
+                                    # ImageNet stats). Use 'normalize: false' for raw pixels.
     augmentation:                   # online, applied to the train split only; val/test/push stay
       hflip: 0.5                    # deterministic. Each dataset module defines its own
       crop: 0.8                     # augmentations() with the knobs that are label-preserving
@@ -19,18 +24,21 @@ run:
     train:
       subsample: 1.0                # To speed up train runs for initial debugging. Either an int > 1 representing number of samples to truncate from, or float in [0, 1] representing portion of dataset to train on
       batch_size: 32
-      num_workers: 2
+      num_workers: 8
+      persistent_workers: True
       pin_memory: True
       shuffle: True
     val:
       subsample: 1.0
       batch_size: 32
-      num_workers: 2
+      num_workers: 8
+      persistent_workers: True
       pin_memory: True
     test:
       subsample: 1.0
       batch_size: 32
-      num_workers: 2
+      num_workers: 8
+      persistent_workers: True
       pin_memory: True
 
   epoch: 0

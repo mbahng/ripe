@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import subprocess
 import zipfile
+import functools
 import io
 import os
 
@@ -110,6 +111,11 @@ def augmentations(augmentation: dict, shape):
 
 _DNA_CHANNELS = {"A": 0, "C": 1, "G": 2, "T": 3}
 
+import numpy as _np
+_DNA_LUT = _np.full(256, 255, dtype=_np.uint8)
+for _base, _channel in _DNA_CHANNELS.items():
+  _DNA_LUT[ord(_base)] = _channel
+
 
 def encode_dna(sequence, length):
   """One-hot a barcode into the (4, 1, length) tensor GeneticCNN2D expects.
@@ -120,14 +126,15 @@ def encode_dna(sequence, length):
     The singleton height axis is required because the model is built from Conv2d
     with (1, k) kernels, so batches arrive as (B, 4, 1, length).
     """
+  import numpy as np
   import torch
 
-  out = torch.zeros(4, 1, length, dtype=torch.float32)
-  for position, base in enumerate(sequence[:length].upper()):
-    channel = _DNA_CHANNELS.get(base)
-    if channel is not None:
-      out[channel, 0, position] = 1.0
-  return out
+  # Vectorized: look every byte up in a 256-entry table, then scatter the ones.
+  codes = _DNA_LUT[np.frombuffer(sequence[:length].upper().encode("ascii", "replace"), dtype=np.uint8)]
+  positions = np.flatnonzero(codes < 4)
+  out = np.zeros((4, length), dtype=np.float32)
+  out[codes[positions], positions] = 1.0
+  return torch.from_numpy(out).reshape(4, 1, length)
 
 
 def collate(dna_length):
@@ -156,11 +163,87 @@ def collate(dna_length):
   return batched
 
 
+_H5_NAME = "cropped_256.hdf5"
+_H5_GROUP = "bioscan_dataset"
+_INDEX_NAME = "cropped_256.index.npz"
+
+
+def _build_offset_index(h5_path, index_path):
+  """Record where every image's bytes sit inside the HDF5 file.
+
+    Looking a name up in the 1M-member group costs ~33 ms per image, against
+    ~0.2 ms for the read itself. The images are contiguous, uncompressed uint8
+    datasets, so each one is a plain byte range of the file and can be read
+    with ``os.pread`` without HDF5. ``visititems`` walks the group in ~0.3 ms
+    per item (about 5 minutes for BIOSCAN-1M); the result is saved next to the
+    HDF5 file and reused until the HDF5 file's size changes.
+    """
+  import fcntl
+  import h5py
+  import numpy as np
+
+  h5_path, index_path = Path(h5_path), Path(index_path)
+  with open(str(index_path) + ".lock", "w") as lock:
+    # One process builds; the others wait here, then find the finished index.
+    fcntl.flock(lock, fcntl.LOCK_EX)
+    if _index_is_current(index_path, h5_path):
+      return
+    print(f"Building image offset index for {h5_path.name} (one-time, a few minutes)...", flush=True)
+    names, offsets, sizes = [], [], []
+
+    def visit(name, obj):
+      if not isinstance(obj, h5py.Dataset):
+        return None
+      offset = obj.id.get_offset()
+      if offset is None or obj.chunks is not None or obj.compression is not None:
+        raise RuntimeError(f"{name} is not a contiguous uncompressed dataset; os.pread cannot read it")
+      names.append(name)
+      offsets.append(offset)
+      sizes.append(int(np.prod(obj.shape)) * obj.dtype.itemsize)
+      if len(names) % 100_000 == 0:
+        print(f"  indexed {len(names):,} images", flush=True)
+      return None
+
+    with h5py.File(h5_path, "r") as handle:
+      handle[_H5_GROUP].visititems(visit)
+    temporary = index_path.with_name(index_path.name + f".{os.getpid()}.tmp")
+    with open(temporary, "wb") as out:
+      np.savez(out, names=np.array(names), offsets=np.array(offsets, dtype=np.int64),
+               sizes=np.array(sizes, dtype=np.int64), file_size=np.int64(h5_path.stat().st_size))
+    os.replace(temporary, index_path)   # atomic: a reader never sees a half-written index
+    print(f"Saved offset index for {len(names):,} images to {index_path}", flush=True)
+
+
+def _index_is_current(index_path, h5_path):
+  import numpy as np
+
+  if not Path(index_path).is_file():
+    return False
+  try:
+    with np.load(index_path) as index:
+      return int(index["file_size"]) == Path(h5_path).stat().st_size
+  except (OSError, ValueError, KeyError):
+    return False   # unreadable or from a different layout: rebuild
+
+
+@functools.lru_cache(maxsize=2)
+def _load_offset_index(root):
+  """(names, offsets, sizes) for the HDF5 file under ``root``; builds the index if missing or stale."""
+  import numpy as np
+
+  h5_path, index_path = Path(root) / _H5_NAME, Path(root) / _INDEX_NAME
+  if not _index_is_current(index_path, h5_path):
+    _build_offset_index(h5_path, index_path)
+  with np.load(index_path) as index:
+    return index["names"], index["offsets"], index["sizes"]
+
+
 class _BIOSCANDataset(Dataset):
   """Image classification view with a shared label vocabulary.
 
-    HDF5 handles are opened lazily per process, so DataLoader workers do not
-    share handles. Rows with no label at the requested rank are dropped by the
+    Image bytes are read straight from the HDF5 file with ``os.pread`` using a
+    precomputed offset index (see ``_build_offset_index``); the file descriptor
+    is opened lazily per process, so DataLoader workers do not share it. Rows with no label at the requested rank are dropped by the
     factory; ``classes`` and ``class_to_idx`` describe the output labels.
     """
 
@@ -175,8 +258,18 @@ class _BIOSCANDataset(Dataset):
     self.class_to_idx = {name: i for i, name in enumerate(classes)}
     self.targets = self.frame["label"].map(self.class_to_idx).to_numpy(dtype="int64")
     self.transform = transform
-    self._h5 = None
+    self._fd = None
     self._pid = None
+    if version == "1m" and dna_length is None:
+      import pandas as pd
+
+      names, offsets, sizes = _load_offset_index(str(self.root))
+      positions = pd.Index(names).get_indexer(self.frame["image_file"])
+      if (positions < 0).any():
+        missing = self.frame["image_file"][positions < 0].head(3).tolist()
+        raise KeyError(f"{int((positions < 0).sum())} images are not in the HDF5 file, e.g. {missing}")
+      self._offsets = offsets[positions]
+      self._sizes = sizes[positions]
 
   def __len__(self):
     return len(self.frame)
@@ -191,13 +284,14 @@ class _BIOSCANDataset(Dataset):
       return {"x": encode_dna(row["gen"], self.dna_length),
               "y": int(self.targets[index])}
     if self.version == "1m":
-      import h5py
-
-      if self._h5 is None or self._pid != os.getpid():
+      if self._fd is None or self._pid != os.getpid():
         self.close()
-        self._h5 = h5py.File(self.root / "cropped_256.hdf5", "r")
+        self._fd = os.open(self.root / _H5_NAME, os.O_RDONLY)
         self._pid = os.getpid()
-      source = io.BytesIO(self._h5["bioscan_dataset"][row["image_file"]][()].tobytes())
+      data = os.pread(self._fd, int(self._sizes[index]), int(self._offsets[index]))
+      if len(data) != self._sizes[index]:
+        raise OSError(f"short read for {row['image_file']}: {len(data)} of {self._sizes[index]} bytes")
+      source = io.BytesIO(data)
     else:
       source = (self.root / "bioscan5m/images/cropped_256" / row["split"]
                 / row["chunk"] / (row["processid"] + ".jpg"))
@@ -207,14 +301,14 @@ class _BIOSCANDataset(Dataset):
     return {"img": image, "gen": row["gen"], "label": int(self.targets[index])}
 
   def close(self):
-    if self._h5 is not None:
-      self._h5.close()
-      self._h5 = None
+    if self._fd is not None:
+      os.close(self._fd)
+      self._fd = None
       self._pid = None
 
   def __getstate__(self):
     state = self.__dict__.copy()
-    state["_h5"] = None
+    state["_fd"] = None
     state["_pid"] = None
     return state
 
@@ -322,21 +416,22 @@ def _bioscan(cfg, version, destination):
     raise ValueError("dna_length must be an integer >= 18")
   item_dna_length = dna_length if modality == "dna" else None
   shape = cfg["shape"]
-  tail: list = [transforms.ToTensor()]
-  if cfg.get("normalize", True):
-    tail.append(transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)))
-  transform = transforms.Compose([transforms.Resize(shape), *tail])
+  transform = transforms.Compose([transforms.Resize(shape), transforms.ToTensor(),
+                                  transforms.Normalize(cfg["normalize"]["mean"], cfg["normalize"]["std"])])
   train_transform = transforms.Compose([transforms.Resize(shape),
-                                        *augmentations(cfg["augmentation"], shape), *tail])
-  # Push keeps raw geometry: prototypes are projected onto real patches.
-  push_transform = transforms.Compose([transforms.Resize(shape), transforms.ToTensor()])
+                                        *augmentations(cfg["augmentation"], shape),
+                                        transforms.ToTensor(),
+                                        transforms.Normalize(cfg["normalize"]["mean"], cfg["normalize"]["std"])])
   result = {}
   for split in ("train", "val", "test"):
     rows = frame[frame["_partition"] == split]
     pipeline = train_transform if split == "train" else transform
     result[split] = _BIOSCANDataset(destination, version, rows, classes, pipeline, item_dna_length)
+  # Push uses the val/test pipeline: same normalization, and crucially no augmentation,
+  # since a prototype is projected onto a specific patch of a specific image and the
+  # recorded boxes have to refer to it.
   result["push"] = _BIOSCANDataset(destination, version, result["train"].frame, classes,
-                                  push_transform, item_dna_length)
+                                  transform, item_dna_length)
   if cfg["balance"]:
     rows = balance_samples(result["train"].frame, cfg.get("seed", 0))
     result["train"] = _BIOSCANDataset(destination, version, rows, classes, train_transform,
@@ -348,8 +443,8 @@ def bioscan1m(dataset_cfg: dict) -> Tuple[Dict[str, Dataset], Callable]:
   """Return train/push/val/test datasets and their collate, downloading missing 1M data.
 
     Uses data/bioscan_1m by default. Options: root, download, rank (order),
-    min_samples, shape, normalize, augmentation, balance, modality,
-    dna_length, split, seed.
+    min_samples, shape, normalize (required; mean/std per channel, or false),
+    augmentation, balance, modality, dna_length, split, seed.
     Splits are always label-stratified from the split ratios and seed; the
     benchmark's own partition columns are not used.
     """

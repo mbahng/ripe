@@ -1,5 +1,5 @@
 name: resnet18_bioscan1m
-base_config: setup/cfg/resnet18_bioscan1m.yml
+base_config: setup/cfg/resnet/resnet18_bioscan1m.yml
 entity: "bahngmc-duke-university"
 project: "ripe"
 
@@ -19,7 +19,7 @@ parameters:
   run.optimizer.momentum:
     values: [0.0, 0.5, 0.9, 0.95, 0.99]
   run.optimizer.weight_decay:
-    values: [0.0, 1.0e-5, 1.0e-4, 1.0e-3, 1.0e-2, 1.0e-1]
+    values: [0.0, 1.0e-5, 1.0e-4, 1.0e-3, 1.0e-2]
 
   # hflip/vflip stay fixed at 0.5: specimens are plate-mounted at arbitrary
   # orientation, so those are label-preserving regardless of the other settings.

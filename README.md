@@ -21,6 +21,12 @@
    python main.py --cfg=setup/cfg/mlp_mnist.yml
    ```
 
+## Debugging
+
+   Set `num_workers: 0` on every split in your config when running under a debugger, since
+   debugpy attaches a separate debug session to each forked DataLoader worker and breakpoints
+   in dataset code only land when that code runs in the main process.
+
 # Hyperparameter Sweeps
 
    `sweep.py` drives [W&B sweeps](https://docs.wandb.ai/guides/sweeps). `main.py` deliberately takes only `--cfg`, so rather than passing sampled hyperparameters as arguments, each trial gets its own generated config file. A sweep spec names a base config and a search space over dot paths into it: 

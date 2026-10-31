@@ -155,7 +155,8 @@ def canadian_invertebrates(dataset_cfg: dict) -> Tuple[Dict[str, Dataset], Calla
 
     Options: root (data), rank (species), min_samples, split ([0.6, 0.2,
     0.2]), seed, allowed_bases ("ACGTN"), min_sequence_length, shape,
-    normalize, augmentation, balance, dna_length (720).
+    normalize (required; mean/std per channel, or false), augmentation, balance,
+    dna_length (720).
     Rows whose image is absent, whose sequence is the upstream ``#NAME?``
     artefact, or whose sequence contains a character outside ``allowed_bases``
     are dropped.
@@ -240,14 +241,12 @@ def canadian_invertebrates(dataset_cfg: dict) -> Tuple[Dict[str, Dataset], Calla
     raise ValueError("dna_length must be an integer >= 18")
 
   shape = dataset_cfg["shape"]
-  tail = [transforms.ToTensor()]
-  if dataset_cfg.get("normalize", True):
-    tail.append(transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)))
-  transform = transforms.Compose([transforms.Resize(shape), *tail])
+  transform = transforms.Compose([transforms.Resize(shape), transforms.ToTensor(),
+                                  transforms.Normalize(dataset_cfg["normalize"]["mean"], dataset_cfg["normalize"]["std"])])
   train_transform = transforms.Compose([transforms.Resize(shape),
-                                        *augmentations(dataset_cfg["augmentation"], shape), *tail])
-  # Push keeps raw geometry: prototypes are projected onto real patches.
-  push_transform = transforms.Compose([transforms.Resize(shape), transforms.ToTensor()])
+                                        *augmentations(dataset_cfg["augmentation"], shape),
+                                        transforms.ToTensor(),
+                                        transforms.Normalize(dataset_cfg["normalize"]["mean"], dataset_cfg["normalize"]["std"])])
 
   result = {}
   for partition in ("train", "val", "test"):
@@ -255,8 +254,10 @@ def canadian_invertebrates(dataset_cfg: dict) -> Tuple[Dict[str, Dataset], Calla
     rows = rows[rows["label"].isin(classes)]
     pipeline = train_transform if partition == "train" else transform
     result[partition] = _CanadianDataset(destination, rows, classes, pipeline)
-  result["push"] = _CanadianDataset(destination, result["train"].frame, classes,
-                                    push_transform)
+  # Push uses the val/test pipeline: same normalization, and crucially no augmentation,
+  # since a prototype is projected onto a specific patch of a specific image and the
+  # recorded boxes have to refer to it.
+  result["push"] = _CanadianDataset(destination, result["train"].frame, classes, transform)
   if dataset_cfg["balance"]:
     rows = balance_samples(result["train"].frame, seed)
     result["train"] = _CanadianDataset(destination, rows, classes, train_transform)

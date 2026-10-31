@@ -18,6 +18,7 @@ from .canadian import canadian_invertebrates
 # language 
 from .shakespeare import shakespeare 
 
+import torch
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.data.distributed import DistributedSampler 
 from typing import Callable, Dict, Tuple
@@ -112,31 +113,37 @@ def init_dataset(cfg_dataset: dict) -> Tuple[Dict[str, Dataset], Callable]:
   return splits, collate
 
 def init_dataloader(cfg_dataset: dict) -> Dict[str, DataLoader]:
+  # Hand batches from workers to the main process through shared files instead of
+  # one file descriptor per tensor, which is slow to set up and tear down.
+  torch.multiprocessing.set_sharing_strategy("file_system")
   ds_dict, collate = init_dataset(cfg_dataset) 
   train_ds, val_ds, test_ds = ds_dict["train"], ds_dict["val"], ds_dict["test"]
 
+  # Shuffling is a property of the split, not a knob: train must be shuffled so batches
+  # are not correlated with dataset order, and push/val/test must not be, so their
+  # metrics are reproducible and a batch position maps back to a fixed dataset index.
   train_dl = DataLoader(train_ds, 
                         batch_size=cfg_dataset["train"]["batch_size"], 
-                        shuffle=cfg_dataset["train"]["shuffle"], 
+                        shuffle=True, 
                         num_workers=cfg_dataset["train"]["num_workers"], 
                         pin_memory=cfg_dataset["train"]["pin_memory"],
                         persistent_workers=cfg_dataset["train"]["persistent_workers"],
                         collate_fn=collate)
   val_dl = DataLoader(val_ds, 
+                      shuffle=False,
                       batch_size=cfg_dataset["val"]["batch_size"], 
                       num_workers=cfg_dataset["val"]["num_workers"], 
                       pin_memory=cfg_dataset["train"]["pin_memory"],
                       persistent_workers=cfg_dataset["train"]["persistent_workers"],
                       collate_fn=collate)
   test_dl = DataLoader(test_ds, 
+                       shuffle=False,
                        batch_size=cfg_dataset["test"]["batch_size"], 
                        num_workers=cfg_dataset["test"]["num_workers"], 
                        pin_memory=cfg_dataset["train"]["pin_memory"],
                        persistent_workers=cfg_dataset["train"]["persistent_workers"],
                        collate_fn=collate)
 
-  return {
-      "train" : train_dl, 
-      "val" : val_dl, 
-      "test" : test_dl
-      }
+  loaders = {"train": train_dl, "val": val_dl, "test": test_dl}
+
+  return loaders

@@ -37,11 +37,13 @@ def celebA(dataset_cfg: dict) -> Tuple[Dict[str, Dataset], Callable]:
   transform = transforms.Compose([
     transforms.Resize(dataset_cfg["shape"]),
     transforms.ToTensor(),
+    transforms.Normalize(dataset_cfg["normalize"]["mean"], dataset_cfg["normalize"]["std"]),
   ])
   train_transform = transforms.Compose([
     transforms.Resize(dataset_cfg["shape"]),
     *augmentations(dataset_cfg["augmentation"]),
     transforms.ToTensor(),
+    transforms.Normalize(dataset_cfg["normalize"]["mean"], dataset_cfg["normalize"]["std"]),
   ])
 
   train_ds = datasets.CelebA(root='./data', split='train', transform=train_transform, download=True)

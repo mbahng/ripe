@@ -95,11 +95,13 @@ def cars(dataset_cfg: dict) -> Tuple[Dict[str, Dataset], Callable]:
   transform = transforms.Compose([
     transforms.Resize(dataset_cfg["shape"]),
     transforms.ToTensor(), # scales data to [0, 1]
+    transforms.Normalize(dataset_cfg["normalize"]["mean"], dataset_cfg["normalize"]["std"]),
   ])
   train_transform = transforms.Compose([
     transforms.Resize(dataset_cfg["shape"]),
     *augmentations(dataset_cfg["augmentation"], dataset_cfg["shape"]),
     transforms.ToTensor(),
+    transforms.Normalize(dataset_cfg["normalize"]["mean"], dataset_cfg["normalize"]["std"]),
   ])
 
   # Train and val come out of the same published partition, so it is loaded
