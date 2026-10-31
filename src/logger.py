@@ -142,7 +142,10 @@ class Logger:
       if self.checkpoint.get("model"): 
         torch.save(model.state_dict(), os.path.join(epoch_save_dir, "model.pt")) 
       if self.checkpoint.get("optimizer"): 
-        torch.save(trainer.optimizer.state_dict(), os.path.join(epoch_save_dir, "model.pt")) 
+        # Not "model.pt": both branches wrote that name, so the optimizer state
+        # overwrote the weights and optimizer.pt was never created -- which also
+        # meant _prepare_cfg_from_checkpoint never saw a resumable epoch.
+        torch.save(trainer.optimizer.state_dict(), os.path.join(epoch_save_dir, "optimizer.pt")) 
 
     # diagnosing (weights, gradients, visualizations), i.e. save on wandb 
     if trainer.epoch % self.diagnose["every"] == 0: 
