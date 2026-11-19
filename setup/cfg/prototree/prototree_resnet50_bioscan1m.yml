@@ -11,7 +11,7 @@ run:
   dataset:
     name: bioscan1m
     shape: [224, 224]
-    min_samples: 10               # drop labels with fewer rows; changing this or
+    min_samples: 27               # drop labels with fewer rows; changing this or
                                   # rank changes the class count, so model.num_classes
                                   # must be updated to match
     rank: "species"                 # order | family | subfamily | genus | species
@@ -73,7 +73,7 @@ run:
     backbone: "resnet50"
     img_size: 224
     depth: 9                        # 2^9 - 1 = 511 prototypes, one per internal node
-    num_classes: 1146
+    num_classes: 506
     proto_channels: 0               # 0 keeps the trunk's width (2048 for resnet50)
     num_addon_layers: 1
     include_sigmoid: false          # a sigmoid crowds every cosine towards 1

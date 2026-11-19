@@ -8,7 +8,7 @@ run:
   dataset:
     name: "bioscan1m"
     shape: [224, 224]             # what the ImageNet-pretrained resnet34 expects
-    min_samples: 10               # drop labels with fewer rows; changing this or
+    min_samples: 27               # drop labels with fewer rows; changing this or
                                   # rank changes the class count, so model.num_classes
                                   # must be updated to match
     rank: "species"                 # order | family | subfamily | genus | species
@@ -49,7 +49,7 @@ run:
   model:
     name: "resnet34"
     checkpoint: ""
-    num_classes: 1146               # insect orders with >= min_samples rows
+    num_classes: 506               # species with >= min_samples rows
 
   loss:
     name: "ce"

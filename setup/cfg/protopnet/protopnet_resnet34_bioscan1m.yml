@@ -5,7 +5,7 @@ run:
   dataset:
     name: bioscan1m 
     shape: [224, 224]
-    min_samples: 10               # drop labels with fewer rows; changing this or
+    min_samples: 27               # drop labels with fewer rows; changing this or
                                   # rank changes the class count, so model.num_classes
                                   # must be updated to match
     rank: "species"                 # order | family | subfamily | genus | species
@@ -58,8 +58,8 @@ run:
                                     # fill in before running, e.g. saved/<run>/<epoch>/model.pt
     backbone: "resnet34"
     img_size: 224
-    prototype_shape: [5730, 128, 1, 1]
-    num_classes: 1146
+    prototype_shape: [2530, 128, 1, 1]
+    num_classes: 506
   loss:
     name: ce
     ce: 1.0
