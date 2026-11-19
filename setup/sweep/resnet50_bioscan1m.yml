@@ -1,7 +1,7 @@
 name: resnet50_bioscan1m
 base_config: setup/cfg/resnet/resnet50_bioscan1m.yml
 entity: "bahngmc-duke-university"
-project: "ripe"
+project: "multimodal_protopnets"
 
 method: bayes
 metric:

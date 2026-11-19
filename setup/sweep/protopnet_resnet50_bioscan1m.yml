@@ -1,7 +1,7 @@
 name: protopnet_resnet50_bioscan1m   # sweep name; saved under saved/sweep-<id>/
 base_config: setup/cfg/protopnet/protopnet_resnet50_bioscan1m.yml
 entity: "bahngmc-duke-university"
-project: "ripe"
+project: "multimodal_protopnets"
 
 method: bayes                   # grid | random | bayes
 metric:
@@ -77,7 +77,7 @@ parameters:                     # keys are dot paths into the trial config
   run.warm_epochs:
     value: 3
   run.joint_epochs:
-    value: 50
+    value: 250
   run.push_every:
     value: 11
   # Pushes land every push_every joint epochs and cost an epoch or two of
