@@ -191,7 +191,7 @@ class ProtoPNetTrainer(Trainer):
       logits, min_distances = self.model(x) 
       ce_loss = torch.nn.functional.cross_entropy(logits, label) 
 
-      max_dist = self.model.prototype_shape[1] # squared distances of [0, 1] vectors sum to at most the prototype dimension
+      max_dist = self.model.max_distance # cosine distance 1 - cos(x, p) is at most 2
       _, predicted = torch.max(logits.data, 1)
 
       # calculate cluster cost by looking at minimum distances between prototype and nearest patch. 
@@ -282,7 +282,7 @@ class ProtoPNetTrainer(Trainer):
       logits, min_distances = self.model(x) 
       ce_loss = torch.nn.functional.cross_entropy(logits, label) 
 
-      max_dist = self.model.prototype_shape[1] # squared distances of [0, 1] vectors sum to at most the prototype dimension
+      max_dist = self.model.max_distance # cosine distance 1 - cos(x, p) is at most 2
       _, predicted = torch.max(logits.data, 1)
 
       prototypes_of_correct_class = torch.t(self.model.prototype_class_identity[:, label_cpu]).cuda() # (B, 2000)
@@ -353,7 +353,7 @@ class ProtoPNetTrainer(Trainer):
       logits, min_distances = self.model(x) 
       ce_loss = torch.nn.functional.cross_entropy(logits, label) 
 
-      max_dist = self.model.prototype_shape[1] # squared distances of [0, 1] vectors sum to at most the prototype dimension
+      max_dist = self.model.max_distance # cosine distance 1 - cos(x, p) is at most 2
       _, predicted = torch.max(logits.data, 1)
 
       prototypes_of_correct_class = torch.t(self.model.prototype_class_identity[:, label_cpu]).cuda() # (B, 2000)
@@ -527,7 +527,8 @@ class ProtoPNetTrainer(Trainer):
     for batch in tqdm(self.val_dl, desc="prototype match", leave=False, file=tqdm_file):
       x = (batch["img"] if "img" in batch else batch["x"]).to(device)
       features = self.model.add_on_layers(self.model.backbone(x))          # (B, D, H, W)
-      dist = ((features.unsqueeze(1) - vectors.unsqueeze(0)) ** 2).sum(2)  # (B, K, H, W)
+      # The same cosine distance the model scores with, over the visualised subset only.
+      dist = self.model.distances(features, vectors)                       # (B, K, H, W)
 
       per_image_min, _ = dist.flatten(2).min(dim=2)                        # (B, K)
       image_min, image_of = per_image_min.min(dim=0)                       # (K,), (K,)
@@ -543,7 +544,7 @@ class ProtoPNetTrainer(Trainer):
   def _activation_overlay(self, image, distance_map):
     """Blend a prototype's upsampled activation over a uint8 image as a JET heat map."""
     size = image.shape[0]
-    activation = self.model.prototype_shape[1] - distance_map
+    activation = self.model.distance_2_similarity(distance_map)
     upsampled = cv2.resize(activation, dsize=(size, size), interpolation=cv2.INTER_CUBIC)
     upsampled = upsampled - np.amin(upsampled)
     peak = np.amax(upsampled)
@@ -571,7 +572,7 @@ class ProtoPNetTrainer(Trainer):
       if match is None:
         continue
       size = source["image"].shape[0]
-      activation = self.model.prototype_shape[1] - source["distance"]
+      activation = self.model.distance_2_similarity(source["distance"])
       upsampled = cv2.resize(activation, dsize=(size, size), interpolation=cv2.INTER_CUBIC)
       lo_y, hi_y, lo_x, hi_x = find_high_activation_crop(upsampled)
 

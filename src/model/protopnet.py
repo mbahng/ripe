@@ -62,6 +62,10 @@ class ProtoPNet(nn.Module):
         raise ValueError("The number of prototypes must be a multiple of the number of classes.")
     self.num_classes = num_classes
     self.num_prototypes = prototype_shape[0]
+    if self.prototype_shape[2] != 1 or self.prototype_shape[3] != 1:
+      raise ValueError(
+        f"Only 1x1 prototypes are supported, got {self.prototype_shape[2]}x{self.prototype_shape[3]}. "
+        "The cosine is taken over the channel dimension of a single latent patch.")
 
     self.add_on_layers = nn.Sequential(
       nn.Conv2d(in_channels=first_add_on_layer_in_channels, out_channels=self.prototype_shape[1], kernel_size=1),
@@ -71,11 +75,11 @@ class ProtoPNet(nn.Module):
       )
     self.prototype_vectors = nn.Parameter(torch.rand(self.prototype_shape), requires_grad=True)
 
-    # the default weights for convolution after add-on layers, should not be backpropped
-    # this may be more efficient with torch.repeat?  
-    self.ones = nn.Parameter(torch.ones(self.prototype_shape), requires_grad=False)
-
-    self.prototype_activation_function = 'linear' 
+    self.prototype_activation_function = 'cosine'
+    # Upper bound on the dissimilarity this model can report: cosine distance
+    # 1 - cos(x, p) lives in [0, 2]. The cluster and separation costs need it to
+    # invert a masked minimum, so it is published here rather than re-derived.
+    self.max_distance = 2.0
     self.last_layer = nn.Linear(self.num_prototypes, self.num_classes, bias=False) # do not use bias  
 
     # need this for calculating loss after forward call
@@ -126,93 +130,47 @@ class ProtoPNet(nn.Module):
 
 
   def distance_2_similarity(self, distances):
-    return -distances
+    """Cosine distance back to the cosine similarity it was built from."""
+    return 1.0 - distances
 
-  def forward(self, x) -> Tuple[torch.Tensor, torch.Tensor]: 
+  def distances(self, features, prototypes=None):
+    """Cosine distance from every prototype to every latent patch.
+
+    features is the (B, D, H, W) add-on output; the result is (B, P, H, W), where
+    [i1, i2, i3, i4] is 1 - cos(patch (i3, i4) of sample i1, prototype i2), in [0, 2].
+    prototypes defaults to all of them; pass a (K, D, 1, 1) subset to score only those,
+    which is how the visualisation keeps its distance tensor small.
+
+    Once both sides are L2 normalized along the channel dimension a 1x1 convolution
+    *is* the cosine, so there is no (B, P, D, H, W) broadcast to materialize and no
+    x^2 + p^2 - 2xp rewrite to be careful about -- the dot product is the whole of it.
+    Normalizing the prototypes rather than constraining them keeps push exact: a
+    prototype set to a real patch has cosine 1, whatever that patch's magnitude is.
     """
-    Original implementation had (x - p)^2 = x^2 + p^2 - 2 x p weirdly. 
-    Chaofan told me that it was because PyTorch didn't have fast support for these operations, 
-    so they were forced to use convolutions. Let's not take this path and reimplement this. 
-    We have input patch of shape (B, D, 7, 7) and prototypes of shape (2000, D, 1, 1) 
-    We want to compute the distances (B, 2000, 7, 7), where (i1, i2, i3, i4) represents the distance of the 'i2'th prototype 
-    with the (i3, i4)th patch in sample 'i1'. We then max pool to get (B, 2000). 
-   
-    The differences between this and original function seem like numerical precision errors. 
-    """
-    x = self.backbone(x) 
-    x = self.add_on_layers(x) # (B, 128, 7, 7)  
+    if prototypes is None:
+      prototypes = self.prototype_vectors
+    x = F.normalize(features, p=2, dim=1, eps=1e-8)      # (B, D, H, W)
+    w = F.normalize(prototypes, p=2, dim=1, eps=1e-8)    # (P, D, 1, 1)
+    return 1.0 - F.conv2d(input=x, weight=w)             # (B, P, H, W)
 
-    B, D, H, W = x.size()
-    p = self.prototype_vectors  # (2000, 128, 1, 1)
-    p = p.expand(-1, -1, H, W)  # (2000, 128, 7, 7)
+  def forward(self, x) -> Tuple[torch.Tensor, torch.Tensor]:
+    x = self.backbone(x)
+    x = self.add_on_layers(x)                        # (B, 128, 7, 7)
 
-    x = x.unsqueeze(1).expand(-1, p.size(0), -1, -1, -1) # (B, 2000, 128, 7, 7) 
-    
-    # compute squared differences of all elements 
-    distances = (x - p) ** 2  # (B, 2000, 128, 7, 7)
-
-    # now compute distances between vectors by summing them up 
-    distances = distances.sum(dim=2) # (B, 2000, 7, 7)
-
-    # Now min over the dimensions 
-    min_distances = distances.amin(dim=(-2, -1))  # (B, 2000)
-    prototype_activations = self.distance_2_similarity(min_distances) # B, 2000
-    logits = self.last_layer(prototype_activations) # B, 200
+    distances = self.distances(x)                    # (B, 2000, 7, 7)
+    # Closest patch per prototype, i.e. the most similar one: min over cosine
+    # distance is max over cosine similarity.
+    min_distances = distances.amin(dim=(-2, -1))     # (B, 2000)
+    prototype_activations = self.distance_2_similarity(min_distances) # (B, 2000), in [-1, 1]
+    logits = self.last_layer(prototype_activations)  # (B, 200)
 
     return logits, min_distances
 
-  def _forward_original(self, x) -> Tuple[torch.Tensor, torch.Tensor]: 
-    x = self.backbone(x) 
-    x = self.add_on_layers(x) # (B, 128, 7, 7)
-    x2 = x ** 2 
-    x2_patch_sum = F.conv2d(input=x2, weight=self.ones) # (B, 128, 7, 7) * (2000, 128, 1, 1) -> (B, 2000, 7, 7) 
-
-    p2 = self.prototype_vectors ** 2 # 2000, 128, 1, 1
-    p2 = torch.sum(p2, dim=(1, 2, 3)) # 2000
-    p2_reshape = p2.view(-1, 1, 1) # 2000, 1, 1
-
-    xp = F.conv2d(input=x, weight=self.prototype_vectors) # B, 2000, 7, 7 
-    intermediate_result = -2 * xp + p2_reshape  # broadcast
-    distances = F.relu(x2_patch_sum + intermediate_result) # B, 2000, 7, 7 
-    # B, i, j, k represents the distance between ith prototype  (of shape 128, 1, 1) and the (j, k)th patch
-
-    # global min pooling
-    min_distances = -F.max_pool2d(-distances,       # B, 2000, 1, 1
-                                  kernel_size=(distances.size()[2],
-                                               distances.size()[3]))
-    min_distances = min_distances.view(-1, self.num_prototypes) # B, 2000, min_distances[i] = minimum distance from ith prototype to each of the 7x7 patches
-    prototype_activations = self.distance_2_similarity(min_distances) # B, 2000
-    logits = self.last_layer(prototype_activations) # B, 200
-
-    return logits, min_distances
-
-  def push_forward(self, x): 
-    """
-    Original implementation had (x - p)^2 = x^2 + p^2 - 2 x p weirdly. 
-    Chaofan told me that it was because PyTorch didn't have fast support for these operations, 
-    so they were forced to use convolutions. Let's not take this path and reimplement this. 
-    We have input patch of shape (B, D, 7, 7) and prototypes of shape (2000, D, 1, 1) 
-    We want to compute the distances (B, 2000, 7, 7), where (i1, i2, i3, i4) represents the distance of the 'i2'th prototype 
-    with the (i3, i4)th patch in sample 'i1'. We then max pool to get (B, 2000). 
-   
-    The differences between this and original function seem like numerical precision errors. 
-    """
-    x = self.backbone(x) 
-    x = self.add_on_layers(x) # (B, 128, 7, 7)  
-
-    B, D, H, W = x.size()
-    p = self.prototype_vectors  # (2000, 128, 1, 1)
-    p = p.expand(-1, -1, H, W)  # (2000, 128, 7, 7)
-
-    x_ = x.unsqueeze(1).expand(-1, p.size(0), -1, -1, -1) # (B, 2000, 128, 7, 7) 
-    
-    # compute squared differences of all elements 
-    distances = (x_ - p) ** 2  # (B, 2000, 128, 7, 7)
-
-    # now compute distances between vectors by summing them up 
-    distances = distances.sum(dim=2) # (B, 2000, 7, 7)
-
-    return x, distances
+  def push_forward(self, x):
+    """The latent patches and their cosine distances to every prototype, for push."""
+    x = self.backbone(x)
+    x = self.add_on_layers(x)       # (B, 128, 7, 7)
+    return x, self.distances(x)     # (B, 128, 7, 7), (B, 2000, 7, 7)
 
   def warm_only(self): 
     for p in self.backbone.parameters():
