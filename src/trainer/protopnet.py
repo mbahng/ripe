@@ -48,6 +48,13 @@ class ProtoPNetTrainer(Trainer):
 
     # last_layer.weight is (classes, prototypes); 1 where a prototype belongs to another class
     self.l1_mask = (1 - torch.t(self.model.prototype_class_identity)).to(self.device)
+    # The penalty is the mean |w| over the masked entries, not their sum. As a sum it
+    # scaled with classes x prototypes -- 1.28e6 terms at 506 classes, giving an l1
+    # term around 3e6 against a cross-entropy near 1.4 -- so during the last-only
+    # stage, where nothing else has a gradient, it simply stripped the classifier
+    # (measured: val 0.4502 -> 0.2520, CE 3.3 -> 13.7). Averaging makes the term
+    # scale-free, so one l1 coefficient means the same thing at any prototype count.
+    self.l1_denominator = self.l1_mask.sum().clamp(min=1.0)
 
     # Every split including push is normalized by its transform, so the model needs no
     # fixing up here. These are kept only to undo it for the prototype visualisations,
@@ -236,7 +243,7 @@ class ProtoPNetTrainer(Trainer):
           torch.max((max_dist - min_distances) * prototypes_of_wrong_class, dim=1)
       separation_cost = torch.mean(max_dist - inverted_distances_to_nontarget_prototypes)
 
-      l1_cost = (self.model.last_layer.weight * self.l1_mask).norm(p=1)
+      l1_cost = (self.model.last_layer.weight * self.l1_mask).norm(p=1) / self.l1_denominator
 
       total_loss = self.ce_coef * ce_loss \
           + self.cluster_coef * cluster_cost \
@@ -313,7 +320,7 @@ class ProtoPNetTrainer(Trainer):
           torch.max((max_dist - min_distances) * prototypes_of_wrong_class, dim=1)
       separation_cost = torch.mean(max_dist - inverted_distances_to_nontarget_prototypes)
 
-      l1_cost = (self.model.last_layer.weight * self.l1_mask).norm(p=1)
+      l1_cost = (self.model.last_layer.weight * self.l1_mask).norm(p=1) / self.l1_denominator
 
       total_loss = self.ce_coef * ce_loss \
           + self.cluster_coef * cluster_cost \
@@ -384,7 +391,7 @@ class ProtoPNetTrainer(Trainer):
           torch.max((max_dist - min_distances) * prototypes_of_wrong_class, dim=1)
       separation_cost = torch.mean(max_dist - inverted_distances_to_nontarget_prototypes)
 
-      l1_cost = (self.model.last_layer.weight * self.l1_mask).norm(p=1)
+      l1_cost = (self.model.last_layer.weight * self.l1_mask).norm(p=1) / self.l1_denominator
 
       total_loss = self.ce_coef * ce_loss \
           + self.cluster_coef * cluster_cost \
