@@ -80,6 +80,12 @@ parameters:                     # keys are dot paths into the trial config
     value: 50
   run.push_every:
     value: 11
+  # Pushes land every push_every joint epochs and cost an epoch or two of
+  # accuracy. The shipped default of 2 would read that dip as a plateau and
+  # end the trial around epoch 12 of 50, ranking trials by how well they
+  # survive their first push rather than by what they converge to.
+  run.convergence.patience:
+    value: 6
   run.last_only_epochs:
     distribution: int_uniform
     min: 3
@@ -106,7 +112,7 @@ parameters:                     # keys are dot paths into the trial config
     min: -0.5
     max: -0.01
   run.loss.l1:                            # 1e-4
-    values: [0.0, 1.0e-5, 1.0e-4, 1.0e-3]
+    values: [0.0, 0.003, 0.01, 0.03, 0.1]
 
   # hflip/vflip stay fixed at 0.5: specimens are plate-mounted at arbitrary
   # orientation, so those are label-preserving regardless of the other settings.
