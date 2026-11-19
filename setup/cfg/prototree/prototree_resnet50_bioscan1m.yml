@@ -1,0 +1,143 @@
+# ProtoTree on BIOSCAN-1M, with the hyperparameters protopnext-image-genetic's
+# train_prototree defaults to: depth 9, cosine activation, AdamW, 15 warm epochs then
+# 35 joint, and no LR decay (the reference builds a MultiStepLR with an empty
+# milestone list, so it never steps). The one deliberate divergence is the
+# backbone: the reference defaults to the iNaturalist-pretrained resnet50, this uses
+# the ImageNet-pretrained one.
+name: ""
+seed: 0
+n_gpus: 1
+run:
+  dataset:
+    name: bioscan1m
+    shape: [224, 224]
+    min_samples: 10               # drop labels with fewer rows; changing this or
+                                  # rank changes the class count, so model.num_classes
+                                  # must be updated to match
+    rank: "species"                 # order | family | subfamily | genus | species
+    normalize:                    # ImageNet stats, matching the pretrained weights
+      mean: [0.485, 0.456, 0.406]
+      std: [0.229, 0.224, 0.225]
+    augmentation:                 # online, train split only. 0 disables a step.
+      crop: 0.8
+      hflip: 0.5                  # plate-mounted specimens: any orientation is valid
+      vflip: 0.5
+      rotation: 180
+      color_jitter: 0.1           # keep mild, pigment is taxonomically informative
+    balance: True                 # balances the labels in the dataset
+    split: [0.6, 0.2, 0.2]
+    train:
+      subsample: 1.0
+      batch_size: 32
+      num_workers: 8
+      pin_memory: true
+      persistent_workers: true
+      shuffle: true
+    push:
+      subsample: 1.0
+      batch_size: 32
+      num_workers: 8
+      pin_memory: true
+      persistent_workers: true
+      shuffle: false
+    val:
+      subsample: 1.0
+      batch_size: 32
+      num_workers: 8
+      persistent_workers: true
+      pin_memory: true
+    test:
+      subsample: 1.0
+      batch_size: 32
+      num_workers: 8
+      persistent_workers: true
+      pin_memory: true
+  epoch: 0
+  warm_epochs: 15
+  joint_epochs: 35
+  last_only_epochs: 0             # the reference has no last-only phase
+  convergence:                    # early stopping; patience 0 (or no block) disables it
+    metric: val.balanced_accuracy # "<split>.<name>" from the trainer's metrics dict
+    min_delta: 0.005              # an epoch must beat the best by more than this
+    patience: 2                   # consecutive non-improving epochs before stopping; 0 disables
+  push:
+    every: 1                      # post-push metrics every epoch, as the reference does
+    in_place: false               # project a copy and report it; leave the live
+                                  # prototypes free. true gives ProtoPNet's destructive push
+    visualize: true
+    prune: false                  # the reference leaves its prune phase switched off
+  model:
+    name: "prototree"
+    checkpoint: ""                  # resume a whole ProtoTree; not a backbone transfer
+    backbone_checkpoint: ""         # a resnet trained on this data as a plain classifier
+    backbone: "resnet50"
+    img_size: 224
+    depth: 9                        # 2^9 - 1 = 511 prototypes, one per internal node
+    num_classes: 1146
+    proto_channels: 0               # 0 keeps the trunk's width (2048 for resnet50)
+    num_addon_layers: 1
+    include_sigmoid: false          # a sigmoid crowds every cosine towards 1
+    log_probabilities: false
+    k_for_topk: 1                   # mean of the k strongest patches; 1 is the max
+    pruning_threshold: 0.0
+    disable_derivative_free_leaf_optim: false
+  loss:
+    name: nll
+    nll: 1.0
+    cluster: -0.8                 # negative: the optimizer maximises the best match
+    variability: -0.1             # negative: reward prototypes that discriminate
+    orthogonality: 1.0
+  optimizer:
+    warm:
+      name: adamw
+      checkpoint: ''
+      eps: 1.0e-07
+      weight_decay: 0.0
+      addon:
+        lr: 0.001
+        weight_decay: 0.0
+      prototype:
+        lr: 0.01
+        weight_decay: 0.0
+      backbone_override:          # the trunk is frozen in warm-up except for these
+        layers: ["layer4.2"]
+        lr: 0.001
+        weight_decay: 0.0
+    joint:
+      name: adamw
+      checkpoint: ''
+      eps: 1.0e-07
+      weight_decay: 0.0
+      backbone:
+        lr: 1.0e-05
+        weight_decay: 0.0
+      addon:
+        lr: 0.001
+        weight_decay: 0.0
+      prototype:
+        lr: 0.01
+        weight_decay: 0.0
+      backbone_override:
+        layers: ["layer4.2"]
+        lr: 0.001
+        weight_decay: 0.0
+    last_layer:                   # unused unless last_only_epochs > 0; ProtoTree's
+      name: adamw                 # leaves are fitted without gradients either way
+      checkpoint: ''
+      lr: 0.001
+log:
+  savedir: ''
+  track:
+    every: 1
+  checkpoint:
+    every: 2
+    model: true
+    optimizer: true
+  diagnose:
+    every: 5
+    weights: true
+    gradients: true
+  wandb:
+    enabled: false
+    entity: bahngmc-duke-university
+    project: ripe-overfit-sweep
