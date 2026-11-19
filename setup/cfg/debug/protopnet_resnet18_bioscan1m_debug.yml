@@ -92,6 +92,15 @@ run:
         weight_decay: 0.01
       prototype:
         lr: 0.003
+      scheduler:                  # halve the joint lr when val stops improving
+        name: plateau
+        metric: val.balanced_accuracy
+        factor: 0.5
+        patience: 10              # non-improving epochs before a decay
+        threshold: 0.01           # above the ~0.01 epoch-to-epoch noise, else it fires on noise
+        threshold_mode: abs
+        cooldown: 10              # let one decay take effect before counting again
+        min_lr: 1.0e-8
     last_layer:
       name: adam
       checkpoint: ''

@@ -85,7 +85,7 @@ parameters:                     # keys are dot paths into the trial config
   # end the trial around epoch 12 of 50, ranking trials by how well they
   # survive their first push rather than by what they converge to.
   run.convergence.patience:
-    value: 6
+    value: 25
   run.last_only_epochs:
     distribution: int_uniform
     min: 3

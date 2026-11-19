@@ -12,7 +12,7 @@ import os
 import matplotlib.pyplot as plt
 import wandb
 from pprint import pprint
-from ..optimizer import init_optimizer
+from ..optimizer import init_optimizer, init_scheduler
 from ..dataset import init_dataloader
 from ..model import ProtoPNet
 from ..optimizer import init_optimizer
@@ -103,6 +103,13 @@ class ProtoPNetTrainer(Trainer):
     # Optional early stopping; absent or patience 0 means it never fires.
     self.convergence = Convergence(kwargs.get("convergence"))
 
+    # Optional LR decay on the joint optimizer. Only joint gets one: the warm and
+    # last-only stages are short and run at a fixed rate, which is also what the
+    # schedule this repo used to have did -- across 96 saved checkpoints of that
+    # run the warm and last-layer rates never moved while joint halved 12 times.
+    self.joint_scheduler, self.joint_scheduler_metric = init_scheduler(
+        optimizer_cfg.get("joint"), self.joint_optimizer)
+
     self.ce_coef = float(loss_cfg["ce"])
     self.cluster_coef = float(loss_cfg["cluster"])
     self.separation_coef = float(loss_cfg["separation"])
@@ -152,6 +159,7 @@ class ProtoPNetTrainer(Trainer):
       print(f"Epoch: {self.epoch}")
       self.train(stage=self.Stage.JOINT)
       self.val()
+      self._step_scheduler()
       pprint(self.metrics)
       logger.save(self)
       pushed_last = False
@@ -172,6 +180,32 @@ class ProtoPNetTrainer(Trainer):
       logger.save(self)
       if self.convergence.update(self.metrics, self.epoch):
         break
+
+  def _step_scheduler(self):
+    """Advance the joint LR scheduler by one joint training epoch.
+
+    Push epochs deliberately do not step it. A push projects the prototypes onto
+    real patches and costs accuracy for an epoch or two afterwards, which a
+    plateau scheduler would read as a plateau and decay on, cutting the rate for
+    a dip the model was always going to recover from. Counting only the epochs
+    that actually trained also matches the old schedule, whose 120 joint epochs
+    produced exactly 12 halvings at one decay per 10 joint epochs.
+    """
+    if self.joint_scheduler is None:
+      return
+    before = [group["lr"] for group in self.joint_optimizer.param_groups]
+    if self.joint_scheduler_metric is None:
+      self.joint_scheduler.step()
+    else:
+      split, _, name = self.joint_scheduler_metric.partition(".")
+      if split not in self.metrics or name not in self.metrics[split]:
+        available = sorted(f"{s}.{n}" for s, m in self.metrics.items() for n in m)
+        raise KeyError(f"scheduler.metric {self.joint_scheduler_metric!r} is not one of {available}")
+      self.joint_scheduler.step(float(self.metrics[split][name]))
+    after = [group["lr"] for group in self.joint_optimizer.param_groups]
+    if after != before:
+      print(f"[scheduler] joint lr {['%.3e' % v for v in before]} -> "
+            f"{['%.3e' % v for v in after]}", flush=True)
 
   def train(self, stage=None):
     # None means evaluation only: there is no optimizer to step without a stage,
