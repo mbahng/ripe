@@ -22,7 +22,7 @@ run:
     split: [0.6, 0.2, 0.2]
     train:
       subsample: 1.0
-      batch_size: 32
+      batch_size: 16
       num_workers: 8
       pin_memory: true
       persistent_workers: true
@@ -53,8 +53,10 @@ run:
   last_only_epochs: 5
   model:
     name: "protopnet"
-    checkpoint: ""
-    backbone: "resnet34"
+    checkpoint: ""                  # resume a whole ProtoPNet; not a backbone transfer
+    backbone_checkpoint: "saved/resnet101_bioscan1m_best/0049/model.pt"         # a resnet trained on this data as a plain classifier;
+                                    # fill in before running, e.g. saved/<run>/<epoch>/model.pt
+    backbone: "resnet101"
     img_size: 224
     prototype_shape: [5730, 128, 1, 1]
     num_classes: 1146

@@ -54,9 +54,9 @@ run:
   model:
     name: "protopnet"
     checkpoint: ""                  # resume a whole ProtoPNet; not a backbone transfer
-    backbone_checkpoint: "saved/resnet50_bioscan1m_best/0050/model.pt"         # a resnet trained on this data as a plain classifier;
+    backbone_checkpoint: "saved/resnet34_bioscan1m_best/0049/model.pt"         # a resnet trained on this data as a plain classifier;
                                     # fill in before running, e.g. saved/<run>/<epoch>/model.pt
-    backbone: "resnet50"
+    backbone: "resnet34"
     img_size: 224
     prototype_shape: [5730, 128, 1, 1]
     num_classes: 1146

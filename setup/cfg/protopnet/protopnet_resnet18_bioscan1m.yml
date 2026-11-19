@@ -29,14 +29,14 @@ run:
       shuffle: true
     push:
       subsample: 1.0
-      batch_size: 32
+      batch_size: 16
       num_workers: 8
       pin_memory: true
       persistent_workers: true
       shuffle: false
     val:
       subsample: 1.0
-      batch_size: 32
+      batch_size: 16
       num_workers: 8
       persistent_workers: true
       pin_memory: true
@@ -51,12 +51,15 @@ run:
   joint_epochs: 50
   push_every: 10
   last_only_epochs: 5
+  convergence:                    # early stopping; patience 0 (or no block) disables it
+    metric: val.balanced_accuracy # "<split>.<name>" from the trainer's metrics dict
+    min_delta: 0.005              # an epoch must beat the best by more than this
+    patience: 2                   # consecutive non-improving epochs before stopping; 0 disables
   model:
     name: "protopnet"
     checkpoint: ""                  # resume a whole ProtoPNet; not a backbone transfer
-    backbone_checkpoint: "saved/resnet101_bioscan1m_best/0050/model.pt"         # a resnet trained on this data as a plain classifier;
-                                    # fill in before running, e.g. saved/<run>/<epoch>/model.pt
-    backbone: "resnet101"
+    backbone_checkpoint: "saved/resnet18_bioscan1m_best/0049/model.pt"
+    backbone: "resnet18"
     img_size: 224
     prototype_shape: [5730, 128, 1, 1]
     num_classes: 1146

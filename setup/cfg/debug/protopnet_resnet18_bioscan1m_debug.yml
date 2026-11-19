@@ -1,3 +1,9 @@
+# Debugger-friendly copy of protopnet_resnet18_bioscan1m.yml.
+# num_workers: 0 everywhere so __getitem__, the collate and the transforms run in
+# the main process, where breakpoints actually land. It is also the only way to
+# debug this project safely: debugpy attaches a session to every forked worker, and
+# four loaders x 8 workers overwhelms the adapter. persistent_workers must be false
+# because PyTorch rejects true with no workers.
 name: "" 
 seed: 0
 n_gpus: 1
@@ -5,7 +11,7 @@ run:
   dataset:
     name: bioscan1m 
     shape: [224, 224]
-    min_samples: 10               # drop labels with fewer rows; changing this or
+    min_samples: 231             # drop labels with fewer rows; changing this or
                                   # rank changes the class count, so model.num_classes
                                   # must be updated to match
     rank: "species"                 # order | family | subfamily | genus | species
@@ -21,45 +27,44 @@ run:
     balance: True                 # balances the labels in the dataset
     split: [0.6, 0.2, 0.2]
     train:
-      subsample: 1.0
-      batch_size: 32
-      num_workers: 8
-      pin_memory: true
-      persistent_workers: true
+      subsample: 0.3
+      batch_size: 8
+      num_workers: 0
+      pin_memory: false
+      persistent_workers: false
       shuffle: true
     push:
-      subsample: 1.0
-      batch_size: 32
-      num_workers: 8
-      pin_memory: true
-      persistent_workers: true
+      subsample: 0.3
+      batch_size: 8
+      num_workers: 0
+      pin_memory: false
+      persistent_workers: false
       shuffle: false
     val:
-      subsample: 1.0
-      batch_size: 32
-      num_workers: 8
-      persistent_workers: true
-      pin_memory: true
+      subsample: 0.3
+      batch_size: 8
+      num_workers: 0
+      persistent_workers: false
+      pin_memory: false
     test:
-      subsample: 1.0
-      batch_size: 32
-      num_workers: 8
-      persistent_workers: true
-      pin_memory: true
+      subsample: 0.3
+      batch_size: 8
+      num_workers: 0
+      persistent_workers: false
+      pin_memory: false
   epoch: 0
-  warm_epochs: 3
+  warm_epochs: 5
   joint_epochs: 50
   push_every: 10
   last_only_epochs: 5
   model:
     name: "protopnet"
     checkpoint: ""                  # resume a whole ProtoPNet; not a backbone transfer
-    backbone_checkpoint: "saved/resnet34_bioscan1m_best/0050/model.pt"         # a resnet trained on this data as a plain classifier;
-                                    # fill in before running, e.g. saved/<run>/<epoch>/model.pt
-    backbone: "resnet34"
+    backbone_checkpoint: "saved/resnet18_bioscan1m_best/0049/model.pt"   # a resnet18 trained on this data as a plain classifier
+    backbone: "resnet18"
     img_size: 224
-    prototype_shape: [5730, 128, 1, 1]
-    num_classes: 1146
+    prototype_shape: [250, 128, 1, 1]
+    num_classes: 50
   loss:
     name: ce
     ce: 1.0
@@ -104,6 +109,6 @@ log:
     weights: true
     gradients: true
   wandb:
-    enabled: false
+    enabled: true
     entity: bahngmc-duke-university
     project: ripe-overfit-sweep

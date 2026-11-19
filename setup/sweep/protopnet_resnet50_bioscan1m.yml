@@ -1,5 +1,5 @@
-name: protopnet_resnet152pretrained_bioscan1m   # sweep name; saved under saved/sweep-<id>/
-base_config: setup/cfg/protopnet/protopnet_resnet152pretrained_bioscan1m.yml
+name: protopnet_resnet50_bioscan1m   # sweep name; saved under saved/sweep-<id>/
+base_config: setup/cfg/protopnet/protopnet_resnet50_bioscan1m.yml
 entity: "bahngmc-duke-university"
 project: "ripe"
 
