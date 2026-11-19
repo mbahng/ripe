@@ -3,7 +3,7 @@ from tqdm import tqdm
 import sys
 import time
 from copy import deepcopy
-from .base import Trainer
+from .base import Convergence, Trainer
 from enum import Enum, auto
 import numpy as np
 from ..receptive_field import compute_rf_prototype
@@ -93,6 +93,9 @@ class ProtoPNetTrainer(Trainer):
       "val" : deepcopy(self._metrics),
     }
 
+    # Optional early stopping; absent or patience 0 means it never fires.
+    self.convergence = Convergence(kwargs.get("convergence"))
+
     self.ce_coef = float(loss_cfg["ce"])
     self.cluster_coef = float(loss_cfg["cluster"])
     self.separation_coef = float(loss_cfg["separation"])
@@ -116,19 +119,27 @@ class ProtoPNetTrainer(Trainer):
     logger.save(self)
 
   def run(self, logger): 
+    stopped = False
     for _ in range(self.warm_epochs): 
       print(f"Epoch: {self.epoch}")
       self.train(stage=self.Stage.WARM)
       self.val()
       pprint(self.metrics)
       logger.save(self)  
+      if self.convergence.update(self.metrics, self.epoch):
+        stopped = True
+        break
 
     pushed_last = False
     for joint_epoch in range(1, self.joint_epochs + 1): 
+      if stopped:
+        break
       if joint_epoch % self.push_every == 0:
         # this joint epoch is a push instead of a training epoch
         self._push_epoch(logger)
         pushed_last = joint_epoch == self.joint_epochs
+        if self.convergence.update(self.metrics, self.epoch):
+          stopped = True
         continue
 
       print(f"Epoch: {self.epoch}")
@@ -137,17 +148,23 @@ class ProtoPNetTrainer(Trainer):
       pprint(self.metrics)
       logger.save(self)
       pushed_last = False
+      if self.convergence.update(self.metrics, self.epoch):
+        stopped = True
 
-    # push once more after joint training, unless the last joint epoch already was a push
+    # Push once more unless the last joint epoch already was one. This runs even
+    # after an early stop: prototypes that were never projected are not prototypes,
+    # so a stopped run would otherwise be left uninterpretable.
     if not pushed_last:
       self._push_epoch(logger)
 
-    for _ in range(self.last_only_epochs): 
+    for _ in range(0 if stopped else self.last_only_epochs): 
       print(f"Epoch: {self.epoch}")
       self.train(stage=self.Stage.LAST) 
       self.val()
       pprint(self.metrics)
       logger.save(self)
+      if self.convergence.update(self.metrics, self.epoch):
+        break
 
   def train(self, stage=None):
     # None means evaluation only: there is no optimizer to step without a stage,
