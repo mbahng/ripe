@@ -19,8 +19,8 @@ parameters:                     # keys are dot paths into the trial config
   # --- learning rates (Adam). Base config values in comments. ---
   run.optimizer.joint.backbone.lr:        # 1e-4: pretrained backbone, keep it small
     distribution: log_uniform_values
-    min: 1.0e-5
-    max: 1.0e-3
+    min: 3.0e-6
+    max: 5.0e-5
   run.optimizer.joint.addon.lr:           # 3e-3
     distribution: log_uniform_values
     min: 3.0e-4
@@ -29,18 +29,6 @@ parameters:                     # keys are dot paths into the trial config
     distribution: log_uniform_values
     min: 3.0e-4
     max: 1.0e-2
-  run.optimizer.warm.addon.lr:            # 3e-3
-    distribution: log_uniform_values
-    min: 3.0e-4
-    max: 1.0e-2
-  run.optimizer.warm.prototype.lr:        # 3e-3
-    distribution: log_uniform_values
-    min: 3.0e-4
-    max: 1.0e-2
-  run.optimizer.last_layer.lr:            # 1e-4
-    distribution: log_uniform_values
-    min: 1.0e-5
-    max: 1.0e-3
 
   # --- weight decay ---
   run.optimizer.joint.backbone.weight_decay:   # 1e-2
@@ -53,22 +41,9 @@ parameters:                     # keys are dot paths into the trial config
   # changes num_classes, regenerate this list. Base config: [5730, 128, 1, 1]. ---
   run.model.prototype_shape:
     values:
-      - [506, 32, 1, 1]
-      - [506, 64, 1, 1]
       - [506, 128, 1, 1]
-      - [506, 256, 1, 1]
-      - [1518, 32, 1, 1]
-      - [1518, 64, 1, 1]
       - [1518, 128, 1, 1]
-      - [1518, 256, 1, 1]
-      - [2530, 32, 1, 1]
-      - [2530, 64, 1, 1]
       - [2530, 128, 1, 1]
-      - [2530, 256, 1, 1]
-      - [5060, 32, 1, 1]
-      - [5060, 64, 1, 1]
-      - [5060, 128, 1, 1]
-      - [5060, 256, 1, 1]
 
   # --- schedule. The stage lengths are pinned rather than swept so that every trial
   # is at the same point when the abandon check fires; only the last-layer stage
@@ -77,7 +52,10 @@ parameters:                     # keys are dot paths into the trial config
   run.warm_epochs:
     value: 3
   run.joint_epochs:
-    value: 250
+    value: 100
+  # panels cost a full extra val pass per push; off during search
+  run.push_visualize_every:
+    value: 0
   run.push_every:
     value: 11
   # Pushes land every push_every joint epochs and cost an epoch or two of
@@ -86,10 +64,6 @@ parameters:                     # keys are dot paths into the trial config
   # survive their first push rather than by what they converge to.
   run.convergence.patience:
     value: 25
-  run.last_only_epochs:
-    distribution: int_uniform
-    min: 3
-    max: 10
 
   # --- give up on a trial that is still bad after the warm stage and five joint
   # epochs. Balanced accuracy rather than plain: with 1146 long-tailed species a
@@ -100,7 +74,7 @@ parameters:                     # keys are dot paths into the trial config
   log.abandon.metric:
     value: "val.balanced_accuracy"
   log.abandon.below:
-    value: 0.15
+    value: 0.35
 
   # --- loss terms. The ce coefficient stays 1.0 so the others read as ratios to it. ---
   run.loss.cluster:                       # 0.8
@@ -111,14 +85,4 @@ parameters:                     # keys are dot paths into the trial config
     distribution: uniform
     min: -0.5
     max: -0.01
-  run.loss.l1:                            # 1e-4
-    values: [0.0, 0.003, 0.01, 0.03, 0.1]
 
-  # hflip/vflip stay fixed at 0.5: specimens are plate-mounted at arbitrary
-  # orientation, so those are label-preserving regardless of the other settings.
-  run.dataset.augmentation.crop:
-    values: [0.6, 0.8, 1.0]
-  run.dataset.augmentation.rotation:
-    values: [0, 90, 180]
-  run.dataset.augmentation.color_jitter:
-    values: [0.0, 0.1, 0.3]

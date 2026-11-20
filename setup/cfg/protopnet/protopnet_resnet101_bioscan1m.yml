@@ -13,17 +13,17 @@ run:
       mean: [0.485, 0.456, 0.406]
       std: [0.229, 0.224, 0.225]
     augmentation:                 # online, train split only. 0 disables a step.
-      crop: 0.8
+      crop: 1
       hflip: 0.5                  # plate-mounted specimens: any orientation is valid
       vflip: 0.5
       rotation: 180
-      color_jitter: 0.1           # keep mild, pigment is taxonomically informative
+      color_jitter: 0.0           # keep mild, pigment is taxonomically informative
     balance: True                 # balances the labels in the dataset
     split: [0.6, 0.2, 0.2]
     train:
       subsample: 1.0
       batch_size: 16
-      num_workers: 8
+      num_workers: 12
       pin_memory: true
       persistent_workers: true
       shuffle: true
@@ -50,11 +50,11 @@ run:
   warm_epochs: 3
   joint_epochs: 50
   push_every: 10
-  last_only_epochs: 5
+  last_only_epochs: 10
   model:
     name: "protopnet"
     checkpoint: ""                  # resume a whole ProtoPNet; not a backbone transfer
-    backbone_checkpoint: "saved/resnet101_bioscan1m_best/0049/model.pt"         # a resnet trained on this data as a plain classifier;
+    backbone_checkpoint: "saved/backbones/resnet101_506/model.pt"         # a resnet trained on this data as a plain classifier;
                                     # fill in before running, e.g. saved/<run>/<epoch>/model.pt
     backbone: "resnet101"
     img_size: 224
@@ -65,7 +65,7 @@ run:
     ce: 1.0
     cluster: 0.8
     separation: -0.08
-    l1: 0.0001
+    l1: 0.01
     label_smoothing: 0.1
   optimizer:
     warm:
@@ -105,11 +105,11 @@ log:
   track:
     every: 1
   checkpoint:
-    every: 2
+    every: 50
     model: true
-    optimizer: true
+    optimizer: false
   diagnose:
-    every: 5
+    every: 50
     weights: true
     gradients: true
   wandb:

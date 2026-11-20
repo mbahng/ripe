@@ -48,6 +48,11 @@ class ProtoPNetTrainer(Trainer):
 
     # last_layer.weight is (classes, prototypes); 1 where a prototype belongs to another class
     self.l1_mask = (1 - torch.t(self.model.prototype_class_identity)).to(self.device)
+    # (classes, prototypes) on the device. The epoch loops used to index the CPU-side
+    # prototype_class_identity with CPU labels and copy the (B, P) result across every
+    # batch -- a blocking transfer that grows with the prototype count, 324 KB a batch
+    # at 5060 prototypes. Transposed once onto the device it is a plain gather.
+    self.class_identity = self.model.prototype_class_identity.t().to(self.device)
     # The penalty is the mean |w| over the masked entries, not their sum. As a sum it
     # scaled with classes x prototypes -- 1.28e6 terms at 506 classes, giving an l1
     # term around 3e6 against a cross-entropy near 1.4 -- so during the last-only
@@ -110,6 +115,13 @@ class ProtoPNetTrainer(Trainer):
     self.joint_scheduler, self.joint_scheduler_metric = init_scheduler(
         optimizer_cfg.get("joint"), self.joint_optimizer)
 
+    # Prototype panels cost a full extra pass over val_dl plus 64 image uploads at
+    # every push, because _log_prototype_pairs calls _best_val_matches. That is worth
+    # paying for a run you intend to read, and pure overhead during a sweep. 0 disables
+    # it, N visualises every Nth push.
+    self.push_visualize_every = int(kwargs.get("push_visualize_every", 1))
+    self._push_count = 0
+
     self.ce_coef = float(loss_cfg["ce"])
     self.cluster_coef = float(loss_cfg["cluster"])
     self.separation_coef = float(loss_cfg["separation"])
@@ -125,7 +137,9 @@ class ProtoPNetTrainer(Trainer):
     The train pass goes through train_dl, so it sees the train augmentations.
     """
     print(f"Epoch: {self.epoch} (push)")
-    self.push(visualize=True)
+    self._push_count += 1
+    visualize = bool(self.push_visualize_every) and self._push_count % self.push_visualize_every == 0
+    self.push(visualize=visualize)
     self.train(stage=self.Stage.EVAL)
     self.epoch += 1
     self.val()
@@ -244,7 +258,6 @@ class ProtoPNetTrainer(Trainer):
     # Get the original terminal stdout if logger has redirected it
     tqdm_file = getattr(sys.stdout, 'terminal', sys.stdout)
     for batch in tqdm(self.train_dl, leave=False, file=tqdm_file):
-      label_cpu = (batch["label"] if "label" in batch else batch["y"])
       x, label = (batch["img"] if "img" in batch else batch["x"]).to(self.device), (batch["label"] if "label" in batch else batch["y"]).to(self.device)
       logits, min_distances = self.model(x) 
       ce_loss = torch.nn.functional.cross_entropy(logits, label) 
@@ -256,7 +269,7 @@ class ProtoPNetTrainer(Trainer):
       # 1. Filter prototype_class_identity: (2000, 200) -> (2000, B). It consists of rows that represent each prototype. 
       # 2. If we transpose it, then (B, 2000). Given the ith sample from batch, matrix[i] is a vector that 
       # shows all prototypes associated with it of form: [0 ... 0 1 ... 1 0 ... 0]
-      prototypes_of_correct_class = torch.t(self.model.prototype_class_identity[:, label_cpu]).cuda() # (B, 2000)
+      prototypes_of_correct_class = self.class_identity[label]   # (B, 2000), already on device
       # prototypes_of_correct_class[i][j] = 1 if jth prototype corresponds to class in ith sample of batch
 
       # we have the min_distances of shape (B, 2000). We don't care about the distances from ith sample to a prototype that isn't associated with it, 
@@ -335,7 +348,6 @@ class ProtoPNetTrainer(Trainer):
     # Get the original terminal stdout if logger has redirected it
     tqdm_file = getattr(sys.stdout, 'terminal', sys.stdout)
     for batch in tqdm(self.val_dl, leave=False, file=tqdm_file):
-      label_cpu = (batch["label"] if "label" in batch else batch["y"])
       x, label = (batch["img"] if "img" in batch else batch["x"]).to(self.device), (batch["label"] if "label" in batch else batch["y"]).to(self.device)
       logits, min_distances = self.model(x) 
       ce_loss = torch.nn.functional.cross_entropy(logits, label) 
@@ -343,7 +355,7 @@ class ProtoPNetTrainer(Trainer):
       max_dist = self.model.max_distance # cosine distance 1 - cos(x, p) is at most 2
       _, predicted = torch.max(logits.data, 1)
 
-      prototypes_of_correct_class = torch.t(self.model.prototype_class_identity[:, label_cpu]).cuda() # (B, 2000)
+      prototypes_of_correct_class = self.class_identity[label]   # (B, 2000), already on device
 
       inverted_distances, _ = torch.max((max_dist - min_distances) * prototypes_of_correct_class, dim=1)
       cluster_cost = torch.mean(max_dist - inverted_distances)
@@ -406,7 +418,6 @@ class ProtoPNetTrainer(Trainer):
     # Get the original terminal stdout if logger has redirected it
     tqdm_file = getattr(sys.stdout, 'terminal', sys.stdout)
     for batch in tqdm(self.test_dl, leave=False, file=tqdm_file):
-      label_cpu = (batch["label"] if "label" in batch else batch["y"])
       x, label = (batch["img"] if "img" in batch else batch["x"]).to(self.device), (batch["label"] if "label" in batch else batch["y"]).to(self.device)
       logits, min_distances = self.model(x) 
       ce_loss = torch.nn.functional.cross_entropy(logits, label) 
@@ -414,7 +425,7 @@ class ProtoPNetTrainer(Trainer):
       max_dist = self.model.max_distance # cosine distance 1 - cos(x, p) is at most 2
       _, predicted = torch.max(logits.data, 1)
 
-      prototypes_of_correct_class = torch.t(self.model.prototype_class_identity[:, label_cpu]).cuda() # (B, 2000)
+      prototypes_of_correct_class = self.class_identity[label]   # (B, 2000), already on device
       inverted_distances, _ = torch.max((max_dist - min_distances) * prototypes_of_correct_class, dim=1)
 
       cluster_cost = torch.mean(max_dist - inverted_distances)
