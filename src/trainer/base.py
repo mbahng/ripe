@@ -62,6 +62,16 @@ class Convergence:
     return (value > self.best + self.min_delta if self.goal == "max"
             else value < self.best - self.min_delta)
 
+  def reset(self) -> None:
+    """Forget the history, for when a new training stage begins.
+
+    The strike count is only meaningful within one stage. Carrying an exhausted
+    counter into the next one would end it on its first epoch.
+    """
+    self.best = None
+    self.best_epoch = None
+    self.strikes = 0
+
   def update(self, metrics: Dict, epoch: int) -> bool:
     """Record this epoch's metric; True means the run should stop now."""
     if not self.enabled:

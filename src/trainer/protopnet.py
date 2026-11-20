@@ -186,7 +186,16 @@ class ProtoPNetTrainer(Trainer):
     if not pushed_last:
       self._push_epoch(logger)
 
-    for _ in range(0 if stopped else self.last_only_epochs): 
+    # Runs even after an early stop, like the push above. last_layer is in neither
+    # the warm nor the joint optimizer, so this stage is the only one that ever
+    # trains the classifier head -- skipping it leaves the head at its +1/-0.5
+    # initialisation and reports a model worth roughly a point less than one that
+    # finished. That made the sweep objective mean two different things depending
+    # on how a trial ended. The convergence counter is reset first: its strikes
+    # belong to the joint stage, and an exhausted one would end this stage
+    # immediately.
+    self.convergence.reset()
+    for _ in range(self.last_only_epochs): 
       print(f"Epoch: {self.epoch}")
       self.train(stage=self.Stage.LAST) 
       self.val()

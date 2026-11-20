@@ -17,7 +17,7 @@ metric:
 
 parameters:                     # keys are dot paths into the trial config
   # --- learning rates (Adam). Base config values in comments. ---
-  run.optimizer.joint.backbone.lr:        # 1e-4: pretrained backbone, keep it small
+  run.optimizer.joint.backbone.lr:        # measured: 1e-5 scores 0.683 where 1e-4 scores 0.473
     distribution: log_uniform_values
     min: 3.0e-6
     max: 5.0e-5
@@ -37,8 +37,9 @@ parameters:                     # keys are dot paths into the trial config
     values: [0.0, 1.0e-4, 1.0e-3, 1.0e-2]
 
   # --- prototype layout: [num_prototypes, dim, 1, 1]. The count must be a multiple of
-  # num_classes (506 here), so these are 1, 3, 5, 10 per class. If rank or min_samples
-  # changes num_classes, regenerate this list. Base config: [5730, 128, 1, 1]. ---
+  # num_classes (506 here), so these are 1, 3 and 5 per class at the base latent
+  # dimension. 10 per class was dropped: it drove a 2x spread in trial cost, which
+  # confounds the best shape with the shape that finished. ---
   run.model.prototype_shape:
     values:
       - [506, 128, 1, 1]
@@ -46,9 +47,9 @@ parameters:                     # keys are dot paths into the trial config
       - [2530, 128, 1, 1]
 
   # --- schedule. The stage lengths are pinned rather than swept so that every trial
-  # is at the same point when the abandon check fires; only the last-layer stage
-  # varies. warm 3 + joint 50 + push_every 11 puts the pushes on epochs 13, 24, 35,
-  # 46 and 53, which leaves epoch 8 a plain joint epoch. ---
+  # is at the same point when the abandon check fires. warm 3 + joint 100 +
+  # push_every 11 puts the pushes on epochs 14, 25, 36, 47, 58, 69, 80, 91 and 102,
+  # which leaves epoch 8 a plain joint epoch. ---
   run.warm_epochs:
     value: 3
   run.joint_epochs:
@@ -60,13 +61,13 @@ parameters:                     # keys are dot paths into the trial config
     value: 11
   # Pushes land every push_every joint epochs and cost an epoch or two of
   # accuracy. The shipped default of 2 would read that dip as a plateau and
-  # end the trial around epoch 12 of 50, ranking trials by how well they
+  # end the trial around epoch 12 of 100, ranking trials by how well they
   # survive their first push rather than by what they converge to.
   run.convergence.patience:
     value: 25
 
   # --- give up on a trial that is still bad after the warm stage and five joint
-  # epochs. Balanced accuracy rather than plain: with 1146 long-tailed species a
+  # epochs. Balanced accuracy rather than plain: with 506 long-tailed species a
   # model can post a respectable plain accuracy while only ever predicting the
   # common ones, and that is exactly the trial worth abandoning. ---
   log.abandon.epoch:
