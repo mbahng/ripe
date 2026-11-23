@@ -1,0 +1,88 @@
+name: ""
+seed: 0
+n_gpus: 1                         # 0 = cpu, 1 = cuda:0, >1 = multi-gpu setup
+
+run:
+  dataset:
+    name: "caninv"
+    shape: [224, 224]             # what the ImageNet-pretrained resnet18 expects
+    min_samples: 33               # 494 species, the closest available match to the
+                                  # 506 of the bioscan1m split, so the two datasets
+                                  # compare at the same class count. Changing this or
+                                  # rank changes the count, so model.num_classes
+                                  # must be updated to match.
+    rank: "species"                 # order | family | subfamily | genus | species
+    normalize:                    # ImageNet stats, matching the pretrained weights
+      mean: [0.485, 0.456, 0.406]
+      std: [0.229, 0.224, 0.225]
+    augmentation:                 # online, train split only. 0 disables a step.
+      crop: 0.8
+      hflip: 0.5                  # plate-mounted specimens: any orientation is valid
+      vflip: 0.5
+      rotation: 180
+      color_jitter: 0.1           # keep mild, pigment is taxonomically informative
+    balance: True                 # balances the labels in the dataset
+    split: [0.6, 0.2, 0.2]
+    train:
+      subsample: 1.0
+      batch_size: 64
+      num_workers: 8
+      persistent_workers: True
+      pin_memory: True
+      shuffle: True
+    val:
+      subsample: 1.0
+      batch_size: 128
+      num_workers: 8
+      persistent_workers: True
+      pin_memory: True
+    test:
+      subsample: 1.0
+      batch_size: 128
+      num_workers: 8
+      persistent_workers: True
+      pin_memory: True
+
+  epoch: 0
+  total_epochs: 120
+
+  model:
+    name: "resnet18"
+    checkpoint: ""
+    num_classes: 494               # species with >= min_samples usable rows
+
+  loss:
+    name: "ce"
+    l1: 0.0
+    label_smoothing: 0.0
+
+  optimizer:
+    all:
+      name: "sgd"
+      checkpoint: ""
+      lr: 1e-5                      # CrossEntropy reduces by sum, so the gradient
+                                    # scales with batch_size: equivalent to 6.4e-4
+                                    # under mean reduction at batch_size 64.
+      momentum: 0.9
+      betas: [0.9, 0.999]
+      weight_decay: 0.0
+
+log:
+  savedir: ""
+  track:
+    every: 1
+  checkpoint:
+    every: 20
+    model: True
+    optimizer: False
+  diagnose:
+    every: 50
+    save_local: True
+
+    weights: True
+    gradients: True
+    sample: True
+  wandb:
+    enabled: False
+    entity: "bahngmc-duke-university"
+    project: "ripe"

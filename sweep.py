@@ -32,6 +32,7 @@ Everything a sweep produces is grouped under one directory:
       0000/ 0001/ ...        metrics.json and checkpoints per epoch
 """
 import argparse
+import copy
 import os
 import shutil
 import signal
@@ -51,14 +52,54 @@ _GRACE_SECONDS = 60
 _TRIAL_SECONDS_VAR = "RIPE_TRIAL_SECONDS"
 
 def set_nested_value(cfg, path, value):
-  """Set nested value using dot notation (e.g., 'run.optimizer.lr')."""
+  """Set nested value using dot notation (e.g., 'run.optimizer.all.lr').
+
+  Missing keys are created, because several specs legitimately add blocks the
+  base config does not carry -- log.abandon.* and run.push_visualize_every are
+  set this way. Returns True when the path already existed, so the caller can
+  tell a real override from a newly invented key.
+  """
   keys = path.split('.')
   current = cfg
+  existed = True
   for key in keys[:-1]:
-    if key not in current:
+    if not isinstance(current, dict) or key not in current:
+      existed = False
+      if not isinstance(current, dict):
+        raise KeyError(f"Sweep parameter {path!r} runs through {key!r}, which is not a mapping")
       current[key] = {}
     current = current[key]
+  existed = existed and keys[-1] in current
   current[keys[-1]] = value
+  return existed
+
+
+def report_new_keys(spec):
+  """Warn about sweep parameters that invent a config key instead of overriding one.
+
+  A path that does not already exist is usually deliberate, but it is also the
+  signature of a spec left behind by a config refactor. ``run.optimizer.lr``
+  kept being written as a sibling of ``all`` after the optimizer block moved
+  under it, so 333 resnet trials across five sweeps all trained at the base
+  lr=1e-5 while wandb recorded the sampled value as though it had been used.
+  A dead sweep dimension is invisible in the results, so it gets announced here,
+  once, when the sweep is created.
+  """
+  try:
+    with open(spec["base_config"]) as f:
+      base = yaml.safe_load(f)
+  except OSError:
+    return
+  created = []
+  for path in spec.get("parameters", {}):
+    probe = copy.deepcopy(base)
+    if not set_nested_value(probe, path, None):
+      created.append(path)
+  if created:
+    print(f"[sweep] {len(created)} parameter(s) create a new key rather than override "
+          f"{spec['base_config']}; confirm each is intended and not a stale path:")
+    for path in created:
+      print(f"[sweep]   {path}")
 
 def build_sweep_config(spec, sweep_cfg_path):
   """Translate our sweep spec into the payload wandb.sweep expects.
@@ -203,6 +244,7 @@ def main():
 
   sweep_id = args.id
   if sweep_id is None:
+    report_new_keys(spec)
     sweep_id = wandb.sweep(build_sweep_config(spec, args.cfg),
                            entity=spec.get("entity") or None,
                            project=spec.get("project") or None)
