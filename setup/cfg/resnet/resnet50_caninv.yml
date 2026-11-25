@@ -72,9 +72,9 @@ log:
   track:
     every: 1
   checkpoint:
-    every: 20
+    every: 1
     model: True
-    optimizer: False
+    optimizer: True
   diagnose:
     every: 50
     save_local: True
