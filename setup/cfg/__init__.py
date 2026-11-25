@@ -59,23 +59,53 @@ class Config:
       self._cfg["run"]["dataset"]["is_distributed"] = False 
       self._cfg["run"]["is_distributed"] = False 
 
-  def _prepare_cfg_from_checkpoint(self): 
+  # Which optimizer files a run of each shape writes, and the config key each one has
+  # to be loaded through. A single-phase run saves one optimizer.pt; ProtoPNet and
+  # ProtoTree save three named files, one per stage (src/logger.py). The keys matter
+  # as much as the files: init_optimizer reads the checkpoint path from *inside* each
+  # phase block, so a path written to run.optimizer.checkpoint is never read by
+  # anything and the stage silently starts with cold moments.
+  _OPTIMIZER_CHECKPOINTS = {
+      "all": (("all", "optimizer.pt"),),
+      "phased": (("warm", "warm_optimizer.pt"),
+                 ("joint", "joint_optimizer.pt"),
+                 ("last_layer", "last_layer_optimizer.pt")),
+  }
+
+  def _prepare_cfg_from_checkpoint(self):
     """
-    Does the following. 
-    1. Looks through the previous run and finds the last epoch which has the model/optimizer saved. 
+    Does the following.
+    1. Looks through the previous run and finds the last epoch which has the model/optimizer saved.
     2. Updates the current epoch in cfg
-    3. Updates the model/optimizer path in cfg 
+    3. Updates the model/optimizer path in cfg
+
+    An epoch only counts if it holds the model *and* every optimizer file this run's
+    shape needs, so resuming never half-restores: a ProtoTree whose joint moments came
+    back but whose warm moments did not would train differently from one that never
+    stopped, which is the whole thing resuming is supposed to avoid.
     """
-    # update current epoch, model/optimizer checkpoints  
-    # look at the dirs that have actual model and optimizer weights saved. 
-    dirs = [] 
-    for f in os.listdir(f"saved/{self['name']}"): 
-      if os.path.isdir(epoch_dir := f"saved/{self['name']}/{f}") and f != "wandb":  
-        if "model.pt" in os.listdir(epoch_dir) and "optimizer.pt" in os.listdir(epoch_dir): 
-          dirs.append(f) 
+    run_dir = f"saved/{self['name']}"
+    optimizer_cfg = self["run"]["optimizer"]
+    shape = "all" if "all" in optimizer_cfg else "phased"
+    wanted = self._OPTIMIZER_CHECKPOINTS[shape]
+    required = {"model.pt", *(filename for _, filename in wanted)}
+
+    # update current epoch, model/optimizer checkpoints
+    # look at the dirs that have actual model and optimizer weights saved.
+    dirs = []
+    for f in os.listdir(run_dir):
+      if os.path.isdir(epoch_dir := f"{run_dir}/{f}") and f != "wandb":
+        if required <= set(os.listdir(epoch_dir)):
+          dirs.append(f)
+    if not dirs:
+      raise Exception(
+          f"No epoch of {run_dir} has all of {sorted(required)}, so there is nothing to "
+          f"resume from. A run is only resumable if it was saved with "
+          f"log.checkpoint.model and log.checkpoint.optimizer both true.")
     final_ep_dir = sorted(dirs)[-1]
-    self["run"]["model"]["checkpoint"] = f"saved/{self['name']}/{final_ep_dir}/model.pt"
-    self["run"]["optimizer"]["checkpoint"] = f"saved/{self['name']}/{final_ep_dir}/optimizer.pt"
+    self["run"]["model"]["checkpoint"] = f"{run_dir}/{final_ep_dir}/model.pt"
+    for phase, filename in wanted:
+      optimizer_cfg[phase]["checkpoint"] = f"{run_dir}/{final_ep_dir}/{filename}"
     self["run"]["epoch"] = int(final_ep_dir)
 
   def post_init_override(self): 

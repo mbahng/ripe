@@ -15,7 +15,7 @@ from tqdm import tqdm
 from .base import Convergence, Trainer
 from ..dataset import init_dataloader
 from ..model import ProtoTree, init_model
-from ..optimizer import init_optimizer
+from ..optimizer import init_optimizer, init_scheduler
 
 # One image per prototype is untenable once the tree gets deep: depth 9 is 511
 # prototypes, depth 11 is 2047, and every push would upload all of them. A fixed
@@ -115,6 +115,18 @@ class ProtoTreeTrainer(Trainer):
 
     # Optional early stopping; absent or patience 0 means it never fires.
     self.convergence = Convergence(kwargs.get("convergence"))
+
+    # Optional LR decay on the joint optimizer, as ProtoPNet has. Only joint gets
+    # one: warm runs with the trunk frozen and is short, and ProtoTree has no
+    # last-only stage because its leaves are fitted without gradients.
+    #
+    # The reference has no working scheduler to be faithful to here. It builds a
+    # MultiStepLR but passes ``lr_milestones = []`` with the computation of that
+    # list commented out, so num_milestones and lr_step_gamma are accepted and then
+    # do nothing and the joint rate is constant. Absent a ``scheduler`` block this
+    # keeps that behaviour exactly.
+    self.joint_scheduler, self.joint_scheduler_metric = init_scheduler(
+        optimizer_cfg.get("joint"), self.joint_optimizer)
 
     self.nll_coef = float(loss_cfg.get("nll", 1.0))
     self.cluster_coef = float(loss_cfg.get("cluster", 0.0))
@@ -221,6 +233,7 @@ class ProtoTreeTrainer(Trainer):
       print(f"Epoch: {self.epoch}")
       self.train(stage=self.Stage.JOINT)
       self.val()
+      self._step_scheduler()
       self._maybe_push_eval()
       pprint(self.metrics)
       logger.save(self)
@@ -241,6 +254,29 @@ class ProtoTreeTrainer(Trainer):
     """Post-push metrics, on the configured cadence. push.every 0 turns them off."""
     if self.push_every and self.epoch % self.push_every == 0:
       self.push_eval()
+
+  def _step_scheduler(self):
+    """Advance the joint LR scheduler by one joint epoch.
+
+    Stepped after ``val`` and before the push, which is where the ProtoPNet trainer
+    steps its own. A push-gated metric is therefore never in scope, so the metric
+    this reads is always one this epoch produced.
+    """
+    if self.joint_scheduler is None:
+      return
+    before = [group["lr"] for group in self.joint_optimizer.param_groups]
+    if self.joint_scheduler_metric is None:
+      self.joint_scheduler.step()
+    else:
+      split, _, name = self.joint_scheduler_metric.partition(".")
+      if split not in self.metrics or name not in self.metrics[split]:
+        available = sorted(f"{s}.{n}" for s, m in self.metrics.items() for n in m)
+        raise KeyError(f"scheduler.metric {self.joint_scheduler_metric!r} is not one of {available}")
+      self.joint_scheduler.step(float(self.metrics[split][name]))
+    after = [group["lr"] for group in self.joint_optimizer.param_groups]
+    if after != before:
+      print(f"[scheduler] joint lr {['%.3e' % v for v in before]} -> "
+            f"{['%.3e' % v for v in after]}", flush=True)
 
   def train(self, stage=None):
     # None means evaluation only: there is no optimizer to step without a stage,
