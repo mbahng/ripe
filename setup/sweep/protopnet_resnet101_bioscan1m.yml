@@ -54,9 +54,12 @@ parameters:                     # keys are dot paths into the trial config
     value: 3
   run.joint_epochs:
     value: 100
-  # panels cost a full extra val pass per push; off during search
+  # Prototype panels. One visualisation scores only MAX_PROTOTYPE_PAIRS (64) prototypes
+  # against the val split, so it costs a single val pass -- about 30 s against a trial
+  # of hours, or ~2% over the nine pushes a trial makes. Cheap enough to keep on for
+  # every push, which is what makes a sweep winner inspectable rather than just a number.
   run.push_visualize_every:
-    value: 0
+    value: 1
   run.push_every:
     value: 11
   # Pushes land every push_every joint epochs and cost an epoch or two of

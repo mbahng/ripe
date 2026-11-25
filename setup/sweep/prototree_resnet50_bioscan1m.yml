@@ -1,0 +1,96 @@
+name: prototree_resnet50_bioscan1m   # sweep name; saved under saved/sweep-<id>/
+base_config: setup/cfg/prototree/prototree_resnet50_bioscan1m.yml
+entity: "bahngmc-duke-university"
+project: "multimodal_protopnets"
+
+method: bayes                   # grid | random | bayes
+metric:
+  # Hard routing is what the tree actually does at inference: one path, one leaf.
+  # Soft routing mixes all 1024 leaves and reads 2-3 points higher, so ranking on it
+  # would reward trials that hedge. Measured post-push, because that is the model
+  # whose prototypes are real image patches. src/logger.py flattens metrics to
+  # "<split>.<name>", so this key exists whenever push.every fires.
+  name: postpush_val.hard_balanced_accuracy
+  goal: maximize
+
+parameters:                     # keys are dot paths into the trial config
+  # --- learning rates (AdamW). Base config values in comments; the reference's
+  # train_prototree defaults. The three differ by ~1000x by design: prototypes move
+  # fast, the trunk barely moves. ---
+  run.optimizer.joint.backbone.lr:        # 1e-5
+    distribution: log_uniform_values
+    min: 3.0e-6
+    max: 5.0e-5
+  run.optimizer.joint.addon.lr:           # 1e-3
+    distribution: log_uniform_values
+    min: 3.0e-4
+    max: 1.0e-2
+  run.optimizer.joint.prototype.lr:       # 1e-2
+    distribution: log_uniform_values
+    min: 3.0e-3
+    max: 3.0e-2
+
+  # --- weight decay. The depth-10 reference run finished 21 points overfit
+  # (train 0.934 / val 0.719), so regularisation is where the headroom is. ---
+  run.optimizer.joint.backbone.weight_decay:   # 0.0
+    values: [0.0, 1.0e-4, 1.0e-3, 1.0e-2]
+  run.optimizer.joint.addon.weight_decay:      # 0.0
+    values: [0.0, 1.0e-4, 1.0e-3, 1.0e-2]
+
+  # --- augmentation. Swept rather than pinned for the same reason: the generalisation
+  # gap, not the epoch budget, is what caps this model. hflip/vflip stay at 0.5
+  # since plate-mounted specimens are label-preserving under both. ---
+  run.dataset.augmentation.crop:
+    values: [0.6, 0.8, 1.0]
+  run.dataset.augmentation.rotation:
+    values: [0, 90, 180]
+  run.dataset.augmentation.color_jitter:
+    values: [0.0, 0.1, 0.3]
+
+  # --- loss terms. nll stays 1.0 so the others read as ratios to it.
+  # run.loss.cluster is deliberately NOT swept: it is mean(max similarity) over
+  # 1023 prototypes x 49 patches of values in [0, 1), which saturates to 0.9998 after
+  # one epoch and never moves again. Its gradient is dead at this depth, so a sweep
+  # dimension for it would burn trials measuring nothing. ---
+  run.loss.variability:                   # -0.1, negative by design: the optimizer
+    distribution: uniform                 # maximises how much prototypes discriminate
+    min: -0.5
+    max: -0.01
+  run.loss.orthogonality:                 # 1.0
+    distribution: log_uniform_values
+    min: 0.1
+    max: 3.0
+
+  # --- shape and schedule, pinned so every trial is at the same point when the
+  # abandon check fires. depth 10 gives 2^10 = 1024 leaves and 1023 prototypes. ---
+  run.model.depth:
+    value: 10
+  run.warm_epochs:
+    value: 15
+  run.joint_epochs:
+    value: 35
+  run.push.every:
+    value: 1
+  # Prototype panels on. One visualisation scores only MAX_PROTOTYPE_PAIRS (64)
+  # prototypes against the val split, so it is a single val pass -- ~30 s against a
+  # ~4 h trial. Worth it: a sweep winner you cannot inspect is just a number.
+  run.push.visualize:
+    value: true
+  # The reference run was still climbing at epoch 50 and individual epochs swing by
+  # +-0.02 as each push re-projects the prototypes and the leaves re-fit. Patience has
+  # to clear that noise or trials get cut for a bad push rather than a bad config.
+  run.convergence.metric:
+    value: "postpush_val.hard_balanced_accuracy"
+  run.convergence.min_delta:
+    value: 0.002
+  run.convergence.patience:
+    value: 12
+
+  # --- give up on a trial that is still bad eight epochs in. The reference run was at
+  # 0.44 postpush hard by epoch 8, so 0.15 only kills genuinely broken configs. ---
+  log.abandon.epoch:
+    value: 8
+  log.abandon.metric:
+    value: "postpush_val.hard_balanced_accuracy"
+  log.abandon.below:
+    value: 0.15
