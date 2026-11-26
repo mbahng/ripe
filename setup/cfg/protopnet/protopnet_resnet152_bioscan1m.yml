@@ -1,25 +1,34 @@
-name: "" 
+name: ''
 seed: 0
 n_gpus: 1
 run:
   dataset:
-    name: bioscan1m 
-    shape: [224, 224]
-    min_samples: 27               # drop labels with fewer rows; changing this or
-                                  # rank changes the class count, so model.num_classes
-                                  # must be updated to match
-    rank: "species"                 # order | family | subfamily | genus | species
-    normalize:                    # ImageNet stats, matching the pretrained weights
-      mean: [0.485, 0.456, 0.406]
-      std: [0.229, 0.224, 0.225]
-    augmentation:                 # online, train split only. 0 disables a step.
+    name: bioscan1m
+    shape:
+    - 224
+    - 224
+    min_samples: 27
+    rank: species
+    normalize:
+      mean:
+      - 0.485
+      - 0.456
+      - 0.406
+      std:
+      - 0.229
+      - 0.224
+      - 0.225
+    augmentation:
       crop: 1
-      hflip: 0.5                  # plate-mounted specimens: any orientation is valid
+      hflip: 0.5
       vflip: 0.5
       rotation: 180
-      color_jitter: 0.1           # keep mild, pigment is taxonomically informative
-    balance: True                 # balances the labels in the dataset
-    split: [0.6, 0.2, 0.2]
+      color_jitter: 0.1
+    balance: true
+    split:
+    - 0.6
+    - 0.2
+    - 0.2
     train:
       subsample: 1.0
       batch_size: 8
@@ -52,13 +61,16 @@ run:
   push_every: 10
   last_only_epochs: 10
   model:
-    name: "protopnet"
-    checkpoint: ""                  # resume a whole ProtoPNet; not a backbone transfer
-    backbone_checkpoint: "saved/backbones/resnet152_506/model.pt"         # a resnet trained on this data as a plain classifier;
-                                    # fill in before running, e.g. saved/<run>/<epoch>/model.pt
-    backbone: "resnet152"
+    name: protopnet
+    checkpoint: ''
+    backbone_checkpoint: saved/backbones/bioscan1m_resnet152/model.pt
+    backbone: resnet152
     img_size: 224
-    prototype_shape: [2530, 128, 1, 1]
+    prototype_shape:
+    - 2530
+    - 128
+    - 1
+    - 1
     num_classes: 506
   loss:
     name: ce
@@ -87,15 +99,15 @@ run:
         weight_decay: 0.01
       prototype:
         lr: 0.003
-      scheduler:                  # halve the joint lr when val stops improving
+      scheduler:
         name: plateau
         metric: val.balanced_accuracy
         factor: 0.5
-        patience: 10              # non-improving epochs before a decay
-        threshold: 0.01           # above the ~0.01 epoch-to-epoch noise, else it fires on noise
+        patience: 10
+        threshold: 0.01
         threshold_mode: abs
-        cooldown: 10              # let one decay take effect before counting again
-        min_lr: 1.0e-8
+        cooldown: 10
+        min_lr: 1.0e-08
     last_layer:
       name: adam
       checkpoint: ''

@@ -1,0 +1,130 @@
+name: ''
+seed: 0
+n_gpus: 1
+run:
+  dataset:
+    name: caninv
+    shape:
+    - 224
+    - 224
+    min_samples: 33
+    rank: species
+    normalize:
+      mean:
+      - 0.485
+      - 0.456
+      - 0.406
+      std:
+      - 0.229
+      - 0.224
+      - 0.225
+    augmentation:
+      crop: 1
+      hflip: 0.5
+      vflip: 0.5
+      rotation: 180
+      color_jitter: 0.0
+    balance: true
+    split:
+    - 0.6
+    - 0.2
+    - 0.2
+    train:
+      subsample: 1.0
+      batch_size: 32
+      num_workers: 12
+      pin_memory: true
+      persistent_workers: true
+      shuffle: true
+    push:
+      subsample: 1.0
+      batch_size: 32
+      num_workers: 8
+      pin_memory: true
+      persistent_workers: true
+      shuffle: false
+    val:
+      subsample: 1.0
+      batch_size: 32
+      num_workers: 8
+      persistent_workers: true
+      pin_memory: true
+    test:
+      subsample: 1.0
+      batch_size: 32
+      num_workers: 8
+      persistent_workers: true
+      pin_memory: true
+  epoch: 0
+  warm_epochs: 3
+  joint_epochs: 50
+  push_every: 10
+  last_only_epochs: 10
+  model:
+    name: protopnet
+    checkpoint: ''
+    backbone_checkpoint: saved/backbones/caninv_resnet50/model.pt
+    backbone: resnet50
+    img_size: 224
+    prototype_shape:
+    - 2470
+    - 128
+    - 1
+    - 1
+    num_classes: 494
+  loss:
+    name: ce
+    ce: 1.0
+    cluster: 0.8
+    separation: -0.08
+    l1: 0.01
+    label_smoothing: 0.1
+  optimizer:
+    warm:
+      name: adam
+      checkpoint: ''
+      addon:
+        lr: 0.003
+        weight_decay: 0.001
+      prototype:
+        lr: 0.003
+    joint:
+      name: adam
+      checkpoint: ''
+      backbone:
+        lr: 0.0001
+        weight_decay: 0.01
+      addon:
+        lr: 0.003
+        weight_decay: 0.01
+      prototype:
+        lr: 0.003
+      scheduler:
+        name: plateau
+        metric: val.balanced_accuracy
+        factor: 0.5
+        patience: 10
+        threshold: 0.01
+        threshold_mode: abs
+        cooldown: 10
+        min_lr: 1.0e-08
+    last_layer:
+      name: adam
+      checkpoint: ''
+      lr: 0.0001
+log:
+  savedir: ''
+  track:
+    every: 1
+  checkpoint:
+    every: 50
+    model: true
+    optimizer: false
+  diagnose:
+    every: 50
+    weights: true
+    gradients: true
+  wandb:
+    enabled: false
+    entity: bahngmc-duke-university
+    project: ripe-overfit-sweep

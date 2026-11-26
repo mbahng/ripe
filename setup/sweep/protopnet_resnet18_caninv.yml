@@ -1,0 +1,71 @@
+name: protopnet_resnet18_caninv
+base_config: setup/cfg/protopnet/protopnet_resnet18_caninv.yml
+entity: bahngmc-duke-university
+project: multimodal_protopnets
+method: bayes
+metric:
+  name: val.balanced_accuracy
+  goal: maximize
+parameters:
+  run.optimizer.joint.backbone.lr:
+    distribution: log_uniform_values
+    min: 3.0e-06
+    max: 5.0e-05
+  run.optimizer.joint.addon.lr:
+    distribution: log_uniform_values
+    min: 0.0003
+    max: 0.01
+  run.optimizer.joint.prototype.lr:
+    distribution: log_uniform_values
+    min: 0.0003
+    max: 0.01
+  run.optimizer.joint.backbone.weight_decay:
+    values:
+    - 0.0
+    - 0.0001
+    - 0.001
+    - 0.01
+  run.optimizer.joint.addon.weight_decay:
+    values:
+    - 0.0
+    - 0.0001
+    - 0.001
+    - 0.01
+  run.model.prototype_shape:
+    values:
+    - - 494
+      - 128
+      - 1
+      - 1
+    - - 1482
+      - 128
+      - 1
+      - 1
+    - - 2470
+      - 128
+      - 1
+      - 1
+  run.warm_epochs:
+    value: 3
+  run.joint_epochs:
+    value: 100
+  run.push_visualize_every:
+    value: 1
+  run.push_every:
+    value: 11
+  run.convergence.patience:
+    value: 25
+  log.abandon.epoch:
+    value: 8
+  log.abandon.metric:
+    value: val.balanced_accuracy
+  log.abandon.below:
+    value: 0.35
+  run.loss.cluster:
+    distribution: log_uniform_values
+    min: 0.1
+    max: 3.0
+  run.loss.separation:
+    distribution: uniform
+    min: -0.5
+    max: -0.01
