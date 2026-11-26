@@ -1,0 +1,156 @@
+name: ''
+seed: 0
+n_gpus: 1
+run:
+  dataset:
+    name: caninv
+    shape:
+    - 224
+    - 224
+    min_samples: 33
+    rank: species
+    normalize:
+      mean:
+      - 0.485
+      - 0.456
+      - 0.406
+      std:
+      - 0.229
+      - 0.224
+      - 0.225
+    augmentation:
+      crop: 0.8
+      hflip: 0.5
+      vflip: 0.5
+      rotation: 180
+      color_jitter: 0.1
+    balance: true
+    split:
+    - 0.6
+    - 0.2
+    - 0.2
+    train:
+      subsample: 1.0
+      batch_size: 32
+      num_workers: 8
+      pin_memory: true
+      persistent_workers: true
+      shuffle: true
+    push:
+      subsample: 1.0
+      batch_size: 32
+      num_workers: 8
+      pin_memory: true
+      persistent_workers: true
+      shuffle: false
+    val:
+      subsample: 1.0
+      batch_size: 32
+      num_workers: 8
+      persistent_workers: true
+      pin_memory: true
+    test:
+      subsample: 1.0
+      batch_size: 32
+      num_workers: 8
+      persistent_workers: true
+      pin_memory: true
+  epoch: 0
+  warm_epochs: 15
+  joint_epochs: 35
+  last_only_epochs: 0
+  convergence:
+    metric: postpush_val.hard_balanced_accuracy
+    min_delta: 0.002
+    patience: 15
+  push:
+    every: 1
+    in_place: false
+    visualize: true
+    prune: false
+  model:
+    name: prototree
+    checkpoint: ''
+    backbone_checkpoint: saved/backbones/resnet50_caninv_494_v3/model.pt
+    backbone: resnet50
+    img_size: 224
+    depth: 10
+    num_classes: 494
+    proto_channels: 128
+    num_addon_layers: 2
+    include_sigmoid: false
+    log_probabilities: false
+    k_for_topk: 1
+    pruning_threshold: 0.0
+    disable_derivative_free_leaf_optim: false
+  loss:
+    name: nll
+    nll: 1.0
+    cluster: -0.8
+    variability: -0.1
+    orthogonality: 1.0
+  optimizer:
+    warm:
+      name: adamw
+      checkpoint: ''
+      eps: 1.0e-07
+      weight_decay: 0.0
+      addon:
+        lr: 0.0002
+        weight_decay: 0.0
+      prototype:
+        lr: 0.01
+        weight_decay: 0.0
+      backbone_override:
+        layers:
+        - layer4.2
+        lr: 0.001
+        weight_decay: 0.0
+    joint:
+      name: adamw
+      checkpoint: ''
+      eps: 1.0e-07
+      weight_decay: 0.0
+      backbone:
+        lr: 1.0e-05
+        weight_decay: 0.0
+      addon:
+        lr: 0.0002
+        weight_decay: 0.0
+      prototype:
+        lr: 0.01
+        weight_decay: 0.0
+      backbone_override:
+        layers:
+        - layer4.2
+        lr: 0.001
+        weight_decay: 0.0
+      scheduler:
+        name: plateau
+        metric: val.hard_balanced_accuracy
+        factor: 0.5
+        patience: 8
+        threshold: 0.01
+        threshold_mode: abs
+        cooldown: 3
+        min_lr: 1.0e-07
+    last_layer:
+      name: adamw
+      checkpoint: ''
+      lr: 0.001
+log:
+  savedir: ''
+  track:
+    every: 1
+  checkpoint:
+    every: 1
+    model: true
+    optimizer: true
+  diagnose:
+    every: 50
+    weights: false
+    gradients: false
+  wandb:
+    enabled: false
+    entity: bahngmc-duke-university
+    project: multimodal_protopnets

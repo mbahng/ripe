@@ -1,0 +1,96 @@
+name: prototree_resnet50_caninv
+base_config: setup/cfg/prototree/prototree_resnet50_caninv.yml
+entity: "bahngmc-duke-university"
+project: "multimodal_protopnets"
+
+method: bayes
+metric:
+  # Hard routing is what the tree does at inference; soft mixing reads ~0.5 points
+  # higher. Measured post-push, the model whose prototypes are real patches.
+  name: postpush_val.hard_balanced_accuracy
+  goal: maximize
+
+# Nine local runs put the ceiling at ~0.66 hard-balanced. What they established:
+#   addon.lr is monotone downward -- 3e-3 << 1e-3 < 5e-4 < 2e-4 at matched epochs;
+#   proto_channels 128 generalises better than 2048 (test 0.6520 vs 0.6215);
+#   added regularisation HURT (wd 1e-3 -> 0.6005, wd 1e-2 -> 0.5889 vs 0.6613 baseline);
+#   backbone quality within in-domain checkpoints did nothing (0.8006 trunk beat 0.8409);
+#   depth 9 was noisier and behind depth 10 at matched epochs.
+# So weight decay and augmentation are pinned at the values that worked, and the search
+# spends its trials on the rates, the schedule length and the routing sharpness.
+parameters:
+  # --- the lever with a proven direction; extend below anything run locally ---
+  run.optimizer.joint.addon.lr:
+    distribution: log_uniform_values
+    min: 5.0e-5
+    max: 5.0e-4
+  run.optimizer.warm.addon.lr:
+    distribution: log_uniform_values
+    min: 5.0e-5
+    max: 5.0e-4
+
+  # --- prototype rate has only ever been tried at 0.01 and 0.02, both at 2048 dims.
+  # Untested at 128 dims, where the geometry of the cosine is different. ---
+  run.optimizer.joint.prototype.lr:
+    distribution: log_uniform_values
+    min: 2.0e-3
+    max: 5.0e-2
+
+  # --- the trunk is the one rate not to raise: ProtoPNet measured 1e-4 scoring 0.473
+  # where 1e-5 scored 0.683 on this data. Narrow band around the known-good value. ---
+  run.optimizer.joint.backbone.lr:
+    distribution: log_uniform_values
+    min: 3.0e-6
+    max: 3.0e-5
+
+  # --- schedule. v7 and v9 both PEAKED at their final epoch with rising tails, so 35
+  # joint epochs truncates rather than converges. caninv sees 56% of bioscan's steps
+  # per epoch, so 85 brings the step count in line. ---
+  run.joint_epochs:
+    values: [35, 60, 85]
+  run.warm_epochs:
+    value: 15
+
+  # --- routing sharpness. Untested. A branch currently routes on the single strongest
+  # of 49 patches; averaging the top k is cheap smoothing against that noise. ---
+  run.model.k_for_topk:
+    values: [1, 3, 5]
+  run.model.depth:
+    values: [9, 10]
+
+  # --- live loss terms. run.loss.cluster is deliberately absent: mean(max similarity)
+  # over 1023 prototypes x 49 patches saturates to 0.9998 after one epoch and its
+  # gradient is dead, so a dimension for it would burn trials measuring nothing. ---
+  run.loss.variability:
+    distribution: uniform
+    min: -0.5
+    max: -0.01
+  run.loss.orthogonality:
+    distribution: log_uniform_values
+    min: 0.1
+    max: 3.0
+
+  # --- pinned at what worked locally; see the note above on regularisation ---
+  run.dataset.augmentation.crop:
+    value: 0.8
+  run.dataset.augmentation.color_jitter:
+    value: 0.1
+  run.push.every:
+    value: 1
+  run.push.visualize:
+    value: true
+  run.convergence.metric:
+    value: "postpush_val.hard_balanced_accuracy"
+  run.convergence.min_delta:
+    value: 0.002
+  run.convergence.patience:
+    value: 20
+
+  # --- kill a trial that is still hopeless after the warm stage. The worst local run
+  # was at 0.18 postpush hard by epoch 14, so 0.08 only catches genuinely broken ones. ---
+  log.abandon.epoch:
+    value: 14
+  log.abandon.metric:
+    value: "postpush_val.hard_balanced_accuracy"
+  log.abandon.below:
+    value: 0.08
