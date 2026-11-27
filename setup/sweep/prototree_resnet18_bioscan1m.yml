@@ -24,10 +24,7 @@ parameters:
     min: 3.0e-06
     max: 3.0e-05
   run.joint_epochs:
-    values:
-    - 35
-    - 50
-    - 60
+    value: 35
   run.warm_epochs:
     value: 15
   run.model.k_for_topk:
