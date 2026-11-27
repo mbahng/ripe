@@ -88,7 +88,14 @@ class ProtoTreeTrainer(Trainer):
     push_cfg = kwargs.get("push") or {}
     self.push_every = int(push_cfg.get("every", 1))
     self.push_in_place = bool(push_cfg.get("in_place", False))
+    # Panels cost a full extra pass over val_dl plus 64 image uploads at every push
+    # they fire on. ProtoTree pushes every epoch by default, so visualising every one
+    # roughly doubles the epoch cost -- on bioscan1m that took an epoch from ~6 to
+    # 12.4 minutes and no trial could finish its schedule inside --trialtime. ``every``
+    # visualises one push in N; 0 or visualize false turns them off entirely.
     self.push_visualize = bool(push_cfg.get("visualize", True))
+    self.push_visualize_every = int(push_cfg.get("visualize_every", 1))
+    self._push_count = 0
     self.prune_before_push = bool(push_cfg.get("prune", False))
 
     # the metrics to keep track of
@@ -457,9 +464,12 @@ class ProtoTreeTrainer(Trainer):
           self.warm_optimizer, self.joint_optimizer, self.last_optimizer = \
               init_optimizer(self.optimizer_cfg, self.model)
 
-    sources = self.push(visualize=self.push_visualize, model=model)
+    self._push_count += 1
+    visualize = (self.push_visualize and bool(self.push_visualize_every)
+                 and self._push_count % self.push_visualize_every == 0)
+    sources = self.push(visualize=visualize, model=model)
     self.metrics["postpush_val"] = self._evaluate(self.val_dl, "postpush val", model=model)
-    if self.push_visualize and sources:
+    if visualize and sources:
       self._log_prototype_pairs(sources, model)
     if model is not self.model:
       del model

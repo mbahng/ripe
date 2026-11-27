@@ -26,8 +26,8 @@ parameters:
   run.joint_epochs:
     values:
     - 35
+    - 50
     - 60
-    - 85
   run.warm_epochs:
     value: 15
   run.model.k_for_topk:
@@ -65,3 +65,5 @@ parameters:
     value: postpush_val.hard_balanced_accuracy
   log.abandon.below:
     value: 0.08
+  run.push.visualize_every:
+    value: 10

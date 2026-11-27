@@ -68,6 +68,7 @@ run:
     in_place: false
     visualize: true
     prune: false
+    visualize_every: 10
   model:
     name: prototree
     checkpoint: ''
